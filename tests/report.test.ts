@@ -26,7 +26,14 @@ const bigSale = mkSale('s-big', 8, '2026-11-06T15:00:00Z');
 test('needs time zone', () => expect(buildDashboard({ ...snap, timeZone: null }, now, month)).toEqual({ status: 'needs_time_zone' }));
 test('current month figures', () => expect((buildDashboard(snap, now, month) as any).current.shop).toMatchObject({ revenue: 10000, cogs: 2400, profit: 7600, units: 2 }));
 test('same days last month', () => expect((buildDashboard(snap, now, month) as any).previous).toMatchObject({ approximate: false, shop: { revenue: 10000 } }));
-test('VND without a rate names the year', () => expect(buildDashboard({ ...snap, expenses: [{ ...exp, currency: 'VND' }], rates: {} }, now, month)).toEqual({ status: 'missing_rate', year: 2026 }));
+test('VND without a rate names the year', () => expect(buildDashboard({ ...snap, expenses: [{ ...exp, currency: 'VND' }], rates: {} }, now, month)).toMatchObject({ status: 'missing_rate', year: 2026 }));
+test('a missing rate still carries stock and warnings', () => {
+  const expired = [{ id: 'e1', product_id: 'p1', expiry_date: '2026-11-01', cleared_at: null }];
+  const d = buildDashboard({ ...snap, expiry: expired, expenses: [{ ...exp, currency: 'VND' }], rates: {} }, now, month) as any;
+  expect(d).toMatchObject({ status: 'missing_rate', year: 2026 });
+  expect(d.warnings).toContainEqual({ productId: 'p1', kind: 'expiry', level: 'expired', expiryDate: '2026-11-01' });
+  expect(d.stock[0]).toMatchObject({ productId: 'p1', stock: 6 });
+});
 test('expense lowers profit', () => expect((buildDashboard({ ...snap, expenses: [exp] }, now, month) as any).current.shop).toMatchObject({ expenses: 1000, profit: 6600 }));
 test('history replaces last month and is marked approximate', () => expect((buildDashboard({ ...snap, history: [hist('2026-10-01', 4, 20000, 3)] }, now, month) as any).previous).toMatchObject({ approximate: true, shop: { revenue: 20000, orders: 3 } }));
 test('stock and warnings', () => {

@@ -10,14 +10,16 @@ type Summary = ReturnType<typeof summarize> & { approximate: boolean };
 
 export type Dashboard =
   | { status: 'needs_time_zone' }
-  | { status: 'missing_rate'; year: number }
+  | { status: 'missing_rate'; year: number; stock: StockInfo[]; warnings: Warning[] }
   | {
     status: 'ok'; today: string; windows: { current: Window; previous: Window };
     current: Summary; previous: Summary;
     series: { current: DayPoint[]; previous: DayPoint[] };
-    stock: { productId: string; stock: number; avgCostCents: number; earliestExpiry: string | null }[];
+    stock: (StockInfo & { avgCostCents: number })[];
     warnings: Warning[];
   };
+
+type StockInfo = { productId: string; stock: number; earliestExpiry: string | null };
 
 const yearOf = (day: string): number => Number(day.slice(0, 4));
 
@@ -29,9 +31,17 @@ export function buildDashboard(s: Snapshot, now: Date, range: Range): Dashboard 
   try {
     return build(s, tz, today, windows);
   } catch (e) {
-    if (e instanceof MissingRateError) return { status: 'missing_rate', year: e.year };
+    if (e instanceof MissingRateError) return { status: 'missing_rate', year: e.year, ...stockAndWarnings(s, today) };
     throw e;
   }
+}
+
+// Needs no currency conversion, so expiry and stock warnings still show when an exchange rate is missing.
+function stockAndWarnings(s: Snapshot, today: string): { stock: StockInfo[]; warnings: Warning[] } {
+  const earliest = (pid: string) => s.expiry.filter(e => e.product_id === pid && !e.cleared_at).map(e => e.expiry_date).sort()[0] ?? null;
+  const stock = s.products.map(p => ({ productId: p.id, stock: stockOf(s.moves, p.id), earliestExpiry: earliest(p.id) }));
+  const lowAt = new Map(s.products.map(p => [p.id, p.low_stock_at]));
+  return { stock, warnings: warnings(stock.map(x => ({ ...x, lowStockAt: lowAt.get(x.productId) ?? 3 })), today) };
 }
 
 function build(s: Snapshot, tz: string, today: string, windows: { current: Window; previous: Window }): Dashboard {
@@ -97,15 +107,13 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
     return { ...summarize([...saleLines, ...lines], costs, w), approximate: touched.length > 0 };
   };
 
-  const earliest = (pid: string) => s.expiry.filter(e => e.product_id === pid && !e.cleared_at).map(e => e.expiry_date).sort()[0] ?? null;
-  const stock = s.products.map(p => ({ productId: p.id, stock: stockOf(s.moves, p.id), avgCostCents: avg[p.id], earliestExpiry: earliest(p.id) }));
-  const lowAt = new Map(s.products.map(p => [p.id, p.low_stock_at]));
+  const sw = stockAndWarnings(s, today);
 
   return {
     status: 'ok', today, windows,
     current: side(windows.current), previous: side(windows.previous),
     series: { current: dailySeries(saleLines, costs, windows.current), previous: dailySeries(saleLines, costs, windows.previous) },
-    stock,
-    warnings: warnings(stock.map(x => ({ ...x, lowStockAt: lowAt.get(x.productId) ?? 3 })), today),
+    stock: sw.stock.map(x => ({ ...x, avgCostCents: avg[x.productId] })),
+    warnings: sw.warnings,
   };
 }
