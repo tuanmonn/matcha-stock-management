@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange } from '@/lib/forms';
+import { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone } from '@/lib/forms';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
 const fd = (o: Record<string, string | string[]>) => {
@@ -38,6 +38,9 @@ test('history month becomes first of month', () => expect(parseHistory(fd({ mont
 test('history rejects a bad month', () => expect(parseHistory(fd({ month: '2026-13', product_id: 'p1', channel: 'etsy', units: '4', revenue: '200', currency: 'USD', orders: '3' })).ok).toBe(false));
 test('product with defaults', () => expect(parseProduct(fd({ sku: 'M30', name: 'Matcha 30g', grams: '30', packaging: 'bag', store_price: '14.00' }))).toEqual({ ok: true, value: { sku: 'M30', name: 'Matcha 30g', grams: 30, packaging: 'bag', store_price: 1400, details: '', etsy_listing_id: null, low_stock_at: 3 } }));
 test('product grams must be above 0', () => expect(parseProduct(fd({ sku: 'M30', name: 'x', grams: '0', packaging: 'bag', store_price: '1' })).ok).toBe(false));
+test('rate parsed', () => expect(parseRate(fd({ year: '2026', vnd_per_usd: '25,400' }))).toEqual({ ok: true, value: { year: 2026, vnd_per_usd: 25400 } }));
+test('rate must be above 0', () => expect(parseRate(fd({ year: '2026', vnd_per_usd: '0' })).ok).toBe(false));
+test('time zone must be a listed US zone', () => { expect(parseTimeZone(fd({ time_zone: 'America/Chicago' })).ok).toBe(true); expect(parseTimeZone(fd({ time_zone: 'Asia/Ho_Chi_Minh' })).ok).toBe(false); });
 test('custom range parsed', () => expect(parseRange({ range: 'custom', from: '2026-10-01', to: '2026-10-15' })).toEqual({ kind: 'custom', from: '2026-10-01', to: '2026-10-15' }));
 test('week parsed', () => expect(parseRange({ range: 'week' })).toEqual({ kind: 'week' }));
 test('backwards range falls back to month', () => expect(parseRange({ range: 'custom', from: '2026-11-10', to: '2026-11-01' })).toEqual({ kind: 'month' }));

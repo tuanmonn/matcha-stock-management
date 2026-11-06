@@ -131,6 +131,19 @@ export function parseProduct(f: FormData) {
   }));
 }
 
+export const US_ZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu'] as const;
+
+export function parseRate(f: FormData) {
+  return wrap(() => {
+    const year = int(str(f, 'year'), 'Year', 2000);
+    const rate = Number(str(f, 'vnd_per_usd').replace(/[,\s]/g, ''));
+    if (!Number.isFinite(rate) || rate <= 0) fail('Rate must be above 0.');
+    return { year, vnd_per_usd: rate };
+  });
+}
+
+export const parseTimeZone = (f: FormData) => wrap(() => oneOf(str(f, 'time_zone'), US_ZONES, 'Time zone'));
+
 export function parseRange(q: { range?: string; from?: string; to?: string }): Range {
   if (q.range === 'week') return { kind: 'week' };
   if (q.range === 'custom' && q.from && q.to && isDay(q.from) && isDay(q.to) && q.from <= q.to) {
