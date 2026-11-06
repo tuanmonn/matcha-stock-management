@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeAll, beforeEach } from 'vitest';
+import { sameDatabase } from './db-guard';
 
 // Integration tests: run only against a throwaway Neon branch (TEST_DATABASE_URL).
 describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
@@ -13,6 +14,12 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   });
 
   beforeAll(async () => {
+    // These tests truncate every table: never let them touch the real database.
+    for (const real of [process.env.DATABASE_URL, process.env.DATABASE_URL_UNPOOLED]) {
+      if (sameDatabase(real, process.env.TEST_DATABASE_URL)) {
+        throw new Error('TEST_DATABASE_URL points at the same database as DATABASE_URL (or DATABASE_URL_UNPOOLED); the data tests refuse to run.');
+      }
+    }
     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     d = await import('@/lib/data');
     sql = (await import('@/lib/db')).sql;
