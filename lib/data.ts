@@ -64,7 +64,7 @@ export async function saveShipment(v: Ok<typeof parseShipment>): Promise<string>
     ...lines.flatMap(l => [
       sql`insert into shipment_lines (id, shipment_id, product_id, units, vendor_amount, vendor_currency, expiry_date) values (${l.id}, ${id}, ${l.product_id}, ${l.units}, ${l.vendor_amount}, ${l.vendor_currency}, ${l.expiry_date})`,
       sql`insert into stock_moves (product_id, qty_delta, kind, ref, at) values (${l.product_id}, ${l.units}, 'shipment', ${l.id}, ${v.received_on}::date::timestamptz)`,
-      sql`insert into expiry_dates (product_id, expiry_date) values (${l.product_id}, ${l.expiry_date}) on conflict do nothing`,
+      sql`insert into expiry_dates (product_id, expiry_date) values (${l.product_id}, ${l.expiry_date}) on conflict (product_id, expiry_date) do update set cleared_at = null`,
     ]),
     clearExpiries(),
   ]);

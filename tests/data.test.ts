@@ -30,6 +30,13 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   test('deleting a sale restores stock', async () => { await d.saveSale(sale, now); await d.deleteSale(sale.id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
   test('deleting a shipment removes its stock', async () => { const id = await d.saveShipment(shipment(5)); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(15); await d.deleteShipment(id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
   test('expiry clears when stock reaches zero', async () => { await d.saveSale({ ...sale, qty: 10 }, now); expect((await d.loadSnapshot()).expiry.every(e => e.cleared_at)).toBe(true); });
+  test('a re-appearing expiry date is uncleared by the next shipment', async () => {
+    await d.saveSale({ ...sale, qty: 10 }, now);
+    expect((await d.loadSnapshot()).expiry[0].cleared_at).not.toBeNull();
+    await d.saveShipment(shipment(5));
+    const e = (await d.loadSnapshot()).expiry;
+    expect(e).toHaveLength(1); expect(e[0].cleared_at).toBeNull();
+  });
   test('selling past zero is allowed', async () => { await d.saveSale({ ...sale, qty: 12 }, now); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(-2); });
   test('rows come back as numbers and day strings', async () => {
     await d.saveSale(sale, now); await d.setRate(2026, 25000);
