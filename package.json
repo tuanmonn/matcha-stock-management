@@ -16,6 +16,8 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@neon/config": "^1.11.3",
+    "@neon/env": "^1.6.15",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",

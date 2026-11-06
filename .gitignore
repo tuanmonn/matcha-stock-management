@@ -7,3 +7,5 @@ node_modules/
 *.tsbuildinfo
 /coverage
 .env
+.neon
+.claude/worktrees/
