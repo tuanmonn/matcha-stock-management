@@ -23,10 +23,13 @@ export async function recordSale(key: string, _prev: State, f: FormData): Promis
   requireKey(key);
   const p = parseSale(f);
   if (!p.ok) return { error: p.error };
-  return attempt(key, async () => {
-    await saveSale(p.value, new Date());
+  let inserted = true;
+  const r = await attempt(key, async () => {
+    inserted = await saveSale(p.value, new Date());
     return `Saved: ${(await skuOf(p.value.product_id)) ?? 'item'} × ${p.value.qty}`;
   });
+  // Same id as an earlier save whose reply was lost: nothing new was recorded, so don't say it was.
+  return r?.saved && !inserted ? { error: 'Already saved. If this is a different sale, tap Save again.' } : r;
 }
 
 /** `id` is '' when adding a new product. */

@@ -27,6 +27,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   });
 
   test('same sale id twice records one sale', async () => { await d.saveSale(sale, now); await d.saveSale(sale, now); const s = await d.loadSnapshot(); expect(s.sales).toHaveLength(1); expect(d.stockOf(s.moves, p)).toBe(10 - 2); });
+  test('saveSale says whether the sale was new', async () => { expect(await d.saveSale(sale, now)).toBe(true); expect(await d.saveSale(sale, now)).toBe(false); });
   test('deleting a sale restores stock', async () => { await d.saveSale(sale, now); await d.deleteSale(sale.id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
   test('deleting a shipment removes its stock', async () => { const id = await d.saveShipment(shipment(5)); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(15); await d.deleteShipment(id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
   test('expiry clears when stock reaches zero', async () => { await d.saveSale({ ...sale, qty: 10 }, now); expect((await d.loadSnapshot()).expiry.every(e => e.cleared_at)).toBe(true); });

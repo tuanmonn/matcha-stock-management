@@ -8,14 +8,16 @@ const price = (cents: number) => (cents / 100).toFixed(2);
 
 export default function SaleForm({ keyValue, products, firstId }: { keyValue: string; products: SaleProduct[]; firstId: string }) {
   const [state, run, pending] = useActionState(recordSale.bind(null, keyValue), null);
-  // The sale id is made on the server at render so a double-tap sends the same id twice; a save issues a fresh one.
+  // The sale id is made on the server at render so a double-tap sends the same id twice; every reply issues a fresh one.
   const [id, setId] = useState(firstId);
   const [pid, setPid] = useState('');
   const [qty, setQty] = useState(1);
   const [cost, setCost] = useState('');
 
   useEffect(() => {
-    if (state?.saved) { setId(crypto.randomUUID()); setPid(''); setQty(1); setCost(''); }
+    if (!state) return;
+    setId(crypto.randomUUID()); // any reply means this id is spent; a lost reply keeps it, and the server then answers "Already saved"
+    if (state.saved) { setPid(''); setQty(1); setCost(''); }
   }, [state]);
 
   return (

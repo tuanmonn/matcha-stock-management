@@ -40,13 +40,14 @@ export const stockOf = (moves: StockMove[], productId: string): number =>
 // Stock at or below zero means those units are gone, so their expiry dates stop warning.
 const clearExpiries = () => sql`update expiry_dates set cleared_at = now(), cleared_by = 'auto' where cleared_at is null and product_id in (select product_id from stock_moves group by product_id having sum(qty_delta) <= 0)`;
 
-export async function saveSale(v: Ok<typeof parseSale>, now: Date): Promise<void> {
+export async function saveSale(v: Ok<typeof parseSale>, now: Date): Promise<boolean> {
   const soldAt = v.sold_on ? `${v.sold_on}T12:00:00Z` : now.toISOString();
-  await sql.transaction([
-    sql`insert into sales (id, channel, sold_at, product_id, qty, unit_price, currency) values (${v.id}, ${v.channel}, ${soldAt}, ${v.product_id}, ${v.qty}, ${v.unit_price}, 'USD') on conflict (id) do nothing`,
+  const [inserted] = await sql.transaction([
+    sql`insert into sales (id, channel, sold_at, product_id, qty, unit_price, currency) values (${v.id}, ${v.channel}, ${soldAt}, ${v.product_id}, ${v.qty}, ${v.unit_price}, 'USD') on conflict (id) do nothing returning id`,
     sql`insert into stock_moves (product_id, qty_delta, kind, ref, at) values (${v.product_id}, ${-v.qty}, 'sale', ${v.id}, ${soldAt}) on conflict (kind, ref) do nothing`,
     clearExpiries(),
   ]);
+  return inserted.length > 0;
 }
 
 export async function deleteSale(id: string): Promise<void> {
