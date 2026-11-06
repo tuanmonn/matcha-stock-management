@@ -1,8 +1,8 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireKey } from '@/lib/access';
-import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry } from '@/lib/data';
-import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines } from '@/lib/forms';
+import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory } from '@/lib/data';
+import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory } from '@/lib/forms';
 import type { State } from './ui';
 
 const SAVE_FAILED = 'Could not save. Check the values and try again.';
@@ -69,6 +69,38 @@ export async function saveCorrectionAction(key: string, _prev: State, f: FormDat
   const p = parseCorrection(f);
   if (!p.ok) return { error: p.error };
   return attempt(key, async () => { await saveCorrection(p.value, new Date()); });
+}
+
+export async function deleteSaleAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await deleteSale(id);
+  revalidatePath(`/${key}`, 'layout');
+}
+
+export async function saveExpenseAction(key: string, _prev: State, f: FormData): Promise<State> {
+  requireKey(key);
+  const p = parseExpense(f);
+  if (!p.ok) return { error: p.error };
+  return attempt(key, async () => { await saveExpense(p.value); });
+}
+
+export async function deleteExpenseAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await deleteExpense(id);
+  revalidatePath(`/${key}`, 'layout');
+}
+
+export async function saveHistoryAction(key: string, _prev: State, f: FormData): Promise<State> {
+  requireKey(key);
+  const p = parseHistory(f);
+  if (!p.ok) return { error: p.error };
+  return attempt(key, async () => { await saveHistory(p.value); });
+}
+
+export async function deleteHistoryAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await deleteHistory(id);
+  revalidatePath(`/${key}`, 'layout');
 }
 
 export async function clearExpiryAction(key: string, id: string): Promise<void> {
