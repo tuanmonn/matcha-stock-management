@@ -38,7 +38,7 @@ export const stockOf = (moves: StockMove[], productId: string): number =>
   moves.reduce((n, m) => (m.product_id === productId ? n + m.qty_delta : n), 0);
 
 // Stock at or below zero means those units are gone, so their expiry dates stop warning.
-const clearExpiries = () => sql`update expiry_dates set cleared_at = now() where cleared_at is null and product_id in (select product_id from stock_moves group by product_id having sum(qty_delta) <= 0)`;
+const clearExpiries = () => sql`update expiry_dates set cleared_at = now(), cleared_by = 'auto' where cleared_at is null and product_id in (select product_id from stock_moves group by product_id having sum(qty_delta) <= 0)`;
 
 export async function saveSale(v: Ok<typeof parseSale>, now: Date): Promise<void> {
   const soldAt = v.sold_on ? `${v.sold_on}T12:00:00Z` : now.toISOString();
@@ -51,7 +51,12 @@ export async function saveSale(v: Ok<typeof parseSale>, now: Date): Promise<void
 
 export async function deleteSale(id: string): Promise<void> {
   await sql.transaction([
-    sql`delete from stock_moves where kind = 'sale' and ref = ${id}`,
+    // Units come back, so dates that were cleared automatically from that moment on warn again. Hand-cleared dates stay cleared.
+    // One statement: the sub-select sees stock from before the delete, hence the "- d.qty_delta".
+    sql`with d as (delete from stock_moves where kind = 'sale' and ref = ${id} returning product_id, qty_delta, at)
+      update expiry_dates e set cleared_at = null, cleared_by = null from d
+      where e.product_id = d.product_id and e.cleared_by = 'auto' and e.cleared_at >= d.at
+        and (select sum(qty_delta) from stock_moves m where m.product_id = e.product_id) - d.qty_delta > 0`,
     sql`delete from sales where id = ${id}`,
   ]);
 }
@@ -64,7 +69,7 @@ export async function saveShipment(v: Ok<typeof parseShipment>): Promise<string>
     ...lines.flatMap(l => [
       sql`insert into shipment_lines (id, shipment_id, product_id, units, vendor_amount, vendor_currency, expiry_date) values (${l.id}, ${id}, ${l.product_id}, ${l.units}, ${l.vendor_amount}, ${l.vendor_currency}, ${l.expiry_date})`,
       sql`insert into stock_moves (product_id, qty_delta, kind, ref, at) values (${l.product_id}, ${l.units}, 'shipment', ${l.id}, ${v.received_on}::date::timestamptz)`,
-      sql`insert into expiry_dates (product_id, expiry_date) values (${l.product_id}, ${l.expiry_date}) on conflict (product_id, expiry_date) do update set cleared_at = null`,
+      sql`insert into expiry_dates (product_id, expiry_date) values (${l.product_id}, ${l.expiry_date}) on conflict (product_id, expiry_date) do update set cleared_at = null, cleared_by = null`,
     ]),
     clearExpiries(),
   ]);
@@ -120,5 +125,5 @@ export async function skuOf(productId: string): Promise<string | null> {
   return (r[0]?.sku as string | undefined) ?? null;
 }
 export async function clearExpiry(id: string): Promise<void> {
-  await sql.transaction([sql`update expiry_dates set cleared_at = now() where id = ${id}`]);
+  await sql.transaction([sql`update expiry_dates set cleared_at = now(), cleared_by = 'user' where id = ${id}`]);
 }

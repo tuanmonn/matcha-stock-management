@@ -37,6 +37,16 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
     const e = (await d.loadSnapshot()).expiry;
     expect(e).toHaveLength(1); expect(e[0].cleared_at).toBeNull();
   });
+  test('deleting the sale that emptied stock restores the expiry warning', async () => {
+    await d.saveSale({ ...sale, qty: 10 }, now); await d.deleteSale(sale.id);
+    const s = await d.loadSnapshot();
+    expect(d.stockOf(s.moves, p)).toBe(10); expect(s.expiry[0].cleared_at).toBeNull();
+  });
+  test('a date cleared by hand stays cleared after an unrelated delete', async () => {
+    await d.clearExpiry((await d.loadSnapshot()).expiry[0].id);
+    await d.saveSale(sale, now); await d.deleteSale(sale.id);
+    expect((await d.loadSnapshot()).expiry[0].cleared_at).not.toBeNull();
+  });
   test('selling past zero is allowed', async () => { await d.saveSale({ ...sale, qty: 12 }, now); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(-2); });
   test('rows come back as numbers and day strings', async () => {
     await d.saveSale(sale, now); await d.setRate(2026, 25000);

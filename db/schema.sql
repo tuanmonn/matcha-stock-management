@@ -81,6 +81,8 @@ create table if not exists expiry_dates (
   unique (product_id, expiry_date)
 );
 
+alter table expiry_dates add column if not exists cleared_by text check (cleared_by in ('auto','user'));
+
 create table if not exists fx_rates (
   year int primary key,
   vnd_per_usd numeric not null check (vnd_per_usd > 0)
