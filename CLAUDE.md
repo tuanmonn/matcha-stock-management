@@ -5,6 +5,11 @@
 - **Planning** (requirements, specs, implementation plans, reviews): use Opus 5.5 (`claude-opus-5-5`) at medium effort.
 - **Executing** (building the app, writing code, designing screens or mockups): use Sonnet 5.5 (`claude-sonnet-5-5`) at medium effort. When delegating this work to an agent, set `model: "sonnet"` and `effort: "medium"`.
 
+## Repository
+
+- Official repo: https://github.com/tuanmonn/matcha-stock-management (remote `origin`). Push work here.
+- `main` is the default branch; phase work happens on its own branch (phase 1: `phase-1`).
+
 ## Project files
 
 - Requirements: `REQUIREMENTS.md` (copy of the live document at https://claude.ai/artifact/TaFBwsKuvXB2z7tnaUfBA1; update both together).
