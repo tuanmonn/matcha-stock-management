@@ -115,6 +115,10 @@ export async function setRate(year: number, vndPerUsd: number): Promise<void> {
 export async function setTimeZone(tz: string): Promise<void> {
   await sql.transaction([sql`update settings set time_zone = ${tz} where id = 1`]);
 }
+export async function skuOf(productId: string): Promise<string | null> {
+  const r = await sql`select sku from products where id = ${productId}`;
+  return (r[0]?.sku as string | undefined) ?? null;
+}
 export async function clearExpiry(id: string): Promise<void> {
   await sql.transaction([sql`update expiry_dates set cleared_at = now() where id = ${id}`]);
 }
