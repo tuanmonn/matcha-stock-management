@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { formatUsd } from '@/lib/money';
 import type { DayPoint } from '@/lib/profit';
+import { yTicks } from '@/lib/ticks';
 
 type Measure = 'profit' | 'revenue' | 'units';
 const LABEL: Record<Measure, string> = { profit: 'Profit', revenue: 'Revenue', units: 'Units sold' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const short = (d: string) => `${Number(d.slice(8))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
 
-const W = 640, H = 260, L = 8, R = 90, T = 12, B = 12;
+const W = 640, H = 270, L = 8, R = 140, T = 12, B = 26;
 
 export default function Chart({ current, previous }: { current: DayPoint[]; previous: DayPoint[] }) {
   const [measure, setMeasure] = useState<Measure>('profit');
@@ -20,6 +21,8 @@ export default function Chart({ current, previous }: { current: DayPoint[]; prev
   const n = Math.max(current.length, previous.length);
   const all = [...current, ...previous].map(p => p[measure]);
   const lo = Math.min(0, ...all), hi = Math.max(0, ...all, 1);
+  const ticks = yTicks(all, measure);
+  const firstDay = (current[0] ?? previous[0])?.day, lastDay = (current[current.length - 1] ?? previous[previous.length - 1])?.day;
   const x = (i: number) => L + (n <= 1 ? 0 : (i / (n - 1)) * (W - L - R));
   const y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
   const line = (pts: DayPoint[]) => pts.map((p, i) => `${x(i).toFixed(1)},${y(p[measure]).toFixed(1)}`).join(' ');
@@ -51,7 +54,10 @@ export default function Chart({ current, previous }: { current: DayPoint[]; prev
             if (e.key === 'ArrowLeft') setHover(h => Math.max(0, (h ?? n) - 1));
             if (e.key === 'ArrowRight') setHover(h => Math.min(n - 1, (h ?? -1) + 1));
           }}>
-          <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="#c9d1c9" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="#8A918A" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          {ticks.map(k => <text key={k.value} x={W - 4} y={y(k.value) + 4} fontSize="13" textAnchor="end" fill="#5b665b">{k.label}</text>)}
+          {firstDay && <text x={L} y={H - 6} fontSize="13" fill="#5b665b">{short(firstDay)}</text>}
+          {lastDay && n > 1 && <text x={x(n - 1)} y={H - 6} fontSize="13" textAnchor="end" fill="#5b665b">{short(lastDay)}</text>}
           <polyline points={line(previous)} fill="none" stroke="#8A918A" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
           <polyline points={line(current)} fill="none" stroke="#2a78d6" strokeWidth={2} vectorEffect="non-scaling-stroke" />
           {previous.length > 0 && <text x={x(previous.length - 1) + 6} y={y(val(previous[previous.length - 1])!) + 14} fontSize="12" fill="#5b665b">Previous</text>}
