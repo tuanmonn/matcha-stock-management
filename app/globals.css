@@ -1,0 +1,6 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; font-size: 16px; color: #1c241c; background: #fafaf7; }
+main { padding: 12px; max-width: 960px; margin: 0 auto; overflow-wrap: anywhere; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; background: #2f5d34; }
+nav a { color: #fff; text-decoration: none; min-height: 48px; padding: 0 12px; display: inline-flex; align-items: center; }
+a { color: #2a78d6; }
