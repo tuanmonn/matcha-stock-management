@@ -30,8 +30,8 @@ legend { font-weight: 600; margin-bottom: 6px; }
 .choice.big { flex-wrap: wrap; min-height: 64px; }
 .choice.big span { margin-left: auto; color: #5b665b; }
 .choice.on { border-color: #2f5d34; background: #e6f1e6; box-shadow: 0 0 0 2px #2f5d34; }
-.channel { display: flex; gap: 8px; flex-wrap: wrap; }
-.channel legend { width: 100%; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choices .choice { min-height: 56px; }
 .stepper { display: flex; gap: 8px; }
 .stepper input { width: 80px; text-align: center; }
 .stepper button { width: 56px; padding: 0; font-size: 1.4rem; }

@@ -52,8 +52,10 @@ export default function SaleForm({ keyValue, products, firstId, today }: { keyVa
 
       <fieldset className="channel">
         <legend>Channel</legend>
-        <label className="choice"><input type="radio" name="channel" value="store" defaultChecked /> Store</label>
-        <label className="choice"><input type="radio" name="channel" value="etsy" /> Etsy</label>
+        <div className="choices">
+          <label className="choice"><input type="radio" name="channel" value="store" defaultChecked /> Store</label>
+          <label className="choice"><input type="radio" name="channel" value="etsy" /> Etsy</label>
+        </div>
       </fieldset>
 
       <details key={id}>
