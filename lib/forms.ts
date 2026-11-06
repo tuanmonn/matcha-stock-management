@@ -80,6 +80,16 @@ export function parseShipment(f: FormData) {
   });
 }
 
+/** Shipment rows left without units are dropped, so the form can offer spare rows. */
+export function dropBlankLines(f: FormData): FormData {
+  const out = new FormData();
+  const lineKeys = ['line_product_id[]', 'line_units[]', 'line_vendor[]', 'line_vendor_currency[]', 'line_expiry[]'];
+  const units = f.getAll('line_units[]').map(v => String(v).trim());
+  for (const [k, v] of f.entries()) if (!lineKeys.includes(k)) out.append(k, v);
+  for (const k of lineKeys) f.getAll(k).forEach((v, i) => { if (units[i]) out.append(k, v); });
+  return out;
+}
+
 export function parseCorrection(f: FormData) {
   return wrap(() => {
     const delta = int(str(f, 'delta'), 'Change', -1_000_000);

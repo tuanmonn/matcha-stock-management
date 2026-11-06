@@ -1,8 +1,8 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireKey } from '@/lib/access';
-import { skuOf, saveSale, saveProduct, setRate, setTimeZone } from '@/lib/data';
-import { parseSale, parseProduct, parseRate, parseTimeZone } from '@/lib/forms';
+import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry } from '@/lib/data';
+import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines } from '@/lib/forms';
 import type { State } from './ui';
 
 const SAVE_FAILED = 'Could not save. Check the values and try again.';
@@ -49,4 +49,30 @@ export async function setTimeZoneAction(key: string, _prev: State, f: FormData):
   const p = parseTimeZone(f);
   if (!p.ok) return { error: p.error };
   return attempt(key, () => setTimeZone(p.value));
+}
+
+export async function saveShipmentAction(key: string, _prev: State, f: FormData): Promise<State> {
+  requireKey(key);
+  const p = parseShipment(dropBlankLines(f));
+  if (!p.ok) return { error: p.error };
+  return attempt(key, async () => { await saveShipment(p.value); });
+}
+
+export async function deleteShipmentAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await deleteShipment(id);
+  revalidatePath(`/${key}`, 'layout');
+}
+
+export async function saveCorrectionAction(key: string, _prev: State, f: FormData): Promise<State> {
+  requireKey(key);
+  const p = parseCorrection(f);
+  if (!p.ok) return { error: p.error };
+  return attempt(key, async () => { await saveCorrection(p.value, new Date()); });
+}
+
+export async function clearExpiryAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await clearExpiry(id);
+  revalidatePath(`/${key}`, 'layout');
 }
