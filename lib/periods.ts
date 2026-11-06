@@ -11,6 +11,8 @@ export function dayKey(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 }
 
+export const todayKey = (now: Date, timeZone: string | null): string => dayKey(now.toISOString(), timeZone ?? 'UTC');
+
 export function addMonths(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number);
   const idx = y * 12 + (m - 1) + n;
