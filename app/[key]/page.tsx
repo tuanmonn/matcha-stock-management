@@ -67,11 +67,11 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   const base = `/${key}`;
 
   if (d.status === 'needs_time_zone') {
-    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p></>;
+    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p><Warnings warnings={[]} name={new Map()} extra={<EtsyWarnings s={s} uncategorizedCents={0} keyValue={key} />} /></>;
   }
   const name = new Map(s.products.map(p => [p.id, p.name]));
   if (d.status === 'missing_rate') {
-    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} /></>;
+    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} extra={<EtsyWarnings s={s} uncategorizedCents={0} keyValue={key} />} /></>;
   }
 
   const year = Number(d.today.slice(0, 4));
