@@ -20,11 +20,12 @@ export async function GET(req: Request) {
     const t = await exchangeCode(code, s.etsy_code_verifier);
     const expires = new Date(Date.now() + t.expires_in * 1000).toISOString();
     // Saved first: etsyGet reads the new access token from settings. State is cleared now so the code is one-time.
+    // Status stays as it was until the shop id is saved, so a failed /users/me never leaves "connected" without a shop.
     await sql`update settings set etsy_access_token = ${t.access_token}, etsy_refresh_token = ${t.refresh_token}, etsy_expires_at = ${expires},
-      etsy_status = 'connected', etsy_connected_at = coalesce(etsy_connected_at, now()),
       etsy_oauth_state = null, etsy_code_verifier = null, etsy_oauth_started_at = null where id = 1`;
     const me = await etsyGet<{ user_id: number; shop_id: number }>('/users/me', {});
-    await sql`update settings set etsy_user_id = ${String(me.user_id)}, etsy_shop_id = ${String(me.shop_id)} where id = 1`;
+    await sql`update settings set etsy_user_id = ${String(me.user_id)}, etsy_shop_id = ${String(me.shop_id)},
+      etsy_status = 'connected', etsy_connected_at = coalesce(etsy_connected_at, now()) where id = 1`;
     return Response.redirect(new URL(`/${process.env.APP_KEY}/settings`, req.url), 303);
   } catch (e) {
     console.error('Etsy connect failed:', (e as Error).name);

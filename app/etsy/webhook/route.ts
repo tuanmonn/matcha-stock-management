@@ -23,7 +23,8 @@ export async function POST(req: Request) {
     await sql`insert into webhook_events (webhook_id) values (${id}) on conflict do nothing`;
     return new Response('ok');
   } catch (e) {
-    console.error('Etsy webhook failed:', (e as Error).message);
+    const err = e as { name?: string; status?: number };
+    console.error('Etsy webhook failed:', err.name, err.status ?? '');
     return new Response('Error', { status: 500 });
   }
 }
