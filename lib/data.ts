@@ -38,7 +38,7 @@ export const stockOf = (moves: StockMove[], productId: string): number =>
   moves.reduce((n, m) => (m.product_id === productId ? n + m.qty_delta : n), 0);
 
 // Stock at or below zero means those units are gone, so their expiry dates stop warning.
-const clearExpiries = () => sql`update expiry_dates set cleared_at = now(), cleared_by = 'auto' where cleared_at is null and product_id in (select product_id from stock_moves group by product_id having sum(qty_delta) <= 0)`;
+export const clearExpiries = () => sql`update expiry_dates set cleared_at = now(), cleared_by = 'auto' where cleared_at is null and product_id in (select product_id from stock_moves group by product_id having sum(qty_delta) <= 0)`;
 
 export async function saveSale(v: Ok<typeof parseSale>, now: Date): Promise<boolean> {
   const soldAt = v.sold_on ? `${v.sold_on}T12:00:00Z` : now.toISOString();
