@@ -24,7 +24,7 @@ export function authorizeUrl(state: string, challenge: string) {
 }
 
 const tokenPost = (params: Record<string, string>, f: typeof fetch) =>
-  f(TOKEN_URL, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: process.env.ETSY_API_KEY!, ...params }) });
+  f(TOKEN_URL, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: process.env.ETSY_API_KEY!, ...params }), signal: AbortSignal.timeout(10_000) });
 
 export async function exchangeCode(code: string, verifier: string, f: typeof fetch = fetch): Promise<Tokens> {
   const r = await tokenPost({ grant_type: 'authorization_code', redirect_uri: process.env.ETSY_REDIRECT_URI!, code, code_verifier: verifier }, f);
@@ -57,7 +57,7 @@ export async function getAccessToken(now: Date, f: typeof fetch = fetch): Promis
 
 export async function etsyGet<T>(path: string, query: Record<string, string | number | boolean>, f: typeof fetch = fetch): Promise<T> {
   const url = `${API}${path}?${new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]))}`;
-  const go = async () => f(url, { headers: { 'x-api-key': `${process.env.ETSY_API_KEY}:${process.env.ETSY_SHARED_SECRET}`, authorization: `Bearer ${await getAccessToken(new Date(), f)}` } });
+  const go = async () => f(url, { headers: { 'x-api-key': `${process.env.ETSY_API_KEY}:${process.env.ETSY_SHARED_SECRET}`, authorization: `Bearer ${await getAccessToken(new Date(), f)}` }, signal: AbortSignal.timeout(10_000) });
   let r = await go();
   if (r.status === 429) {
     const wait = Math.min(Number(r.headers.get('retry-after')) || 1, 10);
@@ -66,4 +66,10 @@ export async function etsyGet<T>(path: string, query: Record<string, string | nu
   }
   if (!r.ok) throw new EtsyError(r.status, path);
   return r.json();
+}
+
+/** Saves the shop and marks Etsy connected. The cut-off restarts on first connect and after a loss, so orders recorded by hand meanwhile are not re-imported; it is kept when already connected. */
+export async function markConnected(userId: string, shopId: string) {
+  await sql`update settings set etsy_user_id = ${userId}, etsy_shop_id = ${shopId},
+    etsy_connected_at = case when etsy_status = 'connected' then etsy_connected_at else now() end, etsy_status = 'connected' where id = 1`;
 }

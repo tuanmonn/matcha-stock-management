@@ -22,7 +22,7 @@ const pct = (m: number | null) => (m === null ? '—' : `${(m * 100).toFixed(1)}
 function EtsyWarnings({ s, uncategorizedCents, keyValue }: { s: Snapshot; uncategorizedCents: number; keyValue: string }) {
   return (
     <>
-      {s.etsy.status === 'reconnect' && <p className="warn bad">Etsy access ended. Reconnect in Settings.</p>}
+      {s.etsy.status === 'reconnect' && <p className="warn bad">Etsy access ended. Reconnect in Settings. Until then, record Etsy orders on the sale screen.</p>}
       {s.issues.map(i => (
         <form key={i.id} action={dismissIssueAction.bind(null, keyValue, i.id)}>
           <p className="warn bad">{i.detail} <button type="submit">Dismiss</button></p>
@@ -32,6 +32,9 @@ function EtsyWarnings({ s, uncategorizedCents, keyValue }: { s: Snapshot; uncate
     </>
   );
 }
+
+const etsyExtra = (s: Snapshot, cents: number, key: string) =>
+  s.etsy.status === 'reconnect' || s.issues.length > 0 || cents > 0 ? <EtsyWarnings s={s} uncategorizedCents={cents} keyValue={key} /> : undefined;
 
 function Warnings({ warnings, name, extra }: { warnings: Warning[]; name: Map<string, string>; extra?: React.ReactNode }) {
   const warn = (w: Warning): { text: string; bad: boolean } => {
@@ -67,11 +70,11 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   const base = `/${key}`;
 
   if (d.status === 'needs_time_zone') {
-    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p><Warnings warnings={[]} name={new Map()} extra={<EtsyWarnings s={s} uncategorizedCents={0} keyValue={key} />} /></>;
+    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p><Warnings warnings={[]} name={new Map()} extra={etsyExtra(s, 0, key)} /></>;
   }
   const name = new Map(s.products.map(p => [p.id, p.name]));
   if (d.status === 'missing_rate') {
-    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} extra={<EtsyWarnings s={s} uncategorizedCents={0} keyValue={key} />} /></>;
+    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} extra={etsyExtra(s, 0, key)} /></>;
   }
 
   const year = Number(d.today.slice(0, 4));
@@ -119,7 +122,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
       )}
       {sp.range === 'custom' && range.kind === 'month' && <p className="muted">That date range was not valid, so this month is shown.</p>}
 
-      <Warnings warnings={d.warnings} name={name} extra={<EtsyWarnings s={s} uncategorizedCents={d.uncategorizedFeesCents} keyValue={key} />} />
+      <Warnings warnings={d.warnings} name={name} extra={etsyExtra(s, d.uncategorizedFeesCents, key)} />
 
       <h2>Profit by day</h2>
       <Chart current={d.series.current} previous={d.series.previous} />

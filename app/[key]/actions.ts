@@ -7,7 +7,7 @@ import { pkce, authorizeUrl } from '@/lib/etsy/client';
 import { runDaily } from '@/lib/etsy/sync';
 import { requireKey } from '@/lib/access';
 import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory } from '@/lib/data';
-import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory } from '@/lib/forms';
+import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory, manualEtsyBlocked } from '@/lib/forms';
 import type { State } from './ui';
 
 const SAVE_FAILED = 'Could not save. Check the values and try again.';
@@ -28,6 +28,9 @@ export async function recordSale(key: string, _prev: State, f: FormData): Promis
   requireKey(key);
   const p = parseSale(f);
   if (!p.ok) return { error: p.error };
+  const [{ etsy_status }] = await sql`select etsy_status from settings where id = 1`;
+  const blocked = manualEtsyBlocked(p.value.channel, etsy_status);
+  if (blocked) return { error: blocked };
   let inserted = true;
   const r = await attempt(key, async () => {
     inserted = await saveSale(p.value, new Date());

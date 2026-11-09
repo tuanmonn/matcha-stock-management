@@ -63,6 +63,39 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy client (database)', () => 
     expect(seen!.headers.get('authorization')).toBe('Bearer 1.live');
   });
 
+  test('Etsy calls carry a 10 second timeout signal', async () => {
+    await setTokens('1.live', 'r1', new Date(Date.now() + 3600_000));
+    let sig: AbortSignal | null | undefined;
+    const f = (async (_u: string, init: RequestInit) => { sig = init.signal; return json(200, { ok: 1 }); }) as unknown as typeof fetch;
+    await c.etsyGet('/x', {}, f);
+    expect(sig).toBeInstanceOf(AbortSignal);
+    let tokSig: AbortSignal | null | undefined;
+    const g = (async (_u: string, init: RequestInit) => { tokSig = init.signal; return json(200, { access_token: 'a', refresh_token: 'r', expires_in: 3600 }); }) as unknown as typeof fetch;
+    await c.exchangeCode('code', 'ver', g);
+    expect(tokSig).toBeInstanceOf(AbortSignal);
+  });
+
+  describe('markConnected', () => {
+    const state = async () => (await sql`select etsy_status, etsy_connected_at from settings where id = 1`)[0];
+    const old = '2026-01-01T00:00:00Z';
+    test('first connect gets a fresh cut-off', async () => {
+      await c.markConnected('u1', 's1');
+      const r = await state();
+      expect(r.etsy_status).toBe('connected');
+      expect(Date.now() - new Date(r.etsy_connected_at).getTime()).toBeLessThan(60_000);
+    });
+    test('reconnect after a loss resets the cut-off', async () => {
+      await sql`update settings set etsy_status = 'reconnect', etsy_connected_at = ${old} where id = 1`;
+      await c.markConnected('u1', 's1');
+      expect(Date.now() - new Date((await state()).etsy_connected_at).getTime()).toBeLessThan(60_000);
+    });
+    test('pressing Reconnect while connected keeps the date', async () => {
+      await sql`update settings set etsy_status = 'connected', etsy_connected_at = ${old} where id = 1`;
+      await c.markConnected('u1', 's1');
+      expect(new Date((await state()).etsy_connected_at).toISOString()).toBe('2026-01-01T00:00:00.000Z');
+    });
+  });
+
   test('retries once after 429 then throws EtsyError', async () => {
     await setTokens('1.live', 'r1', new Date(Date.now() + 3600_000));
     let calls = 0;

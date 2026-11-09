@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone, dropBlankLines } from '@/lib/forms';
+import { parseSale, manualEtsyBlocked, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone, dropBlankLines } from '@/lib/forms';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
 const fd = (o: Record<string, string | string[]>) => {
@@ -54,3 +54,10 @@ test('week parsed', () => expect(parseRange({ range: 'week' })).toEqual({ kind: 
 test('backwards range falls back to month', () => expect(parseRange({ range: 'custom', from: '2026-11-10', to: '2026-11-01' })).toEqual({ kind: 'month' }));
 test('range over 366 days falls back to month', () => expect(parseRange({ range: 'custom', from: '2025-01-01', to: '2026-11-01' })).toEqual({ kind: 'month' }));
 test('unknown range falls back to month', () => expect(parseRange({ range: 'year' })).toEqual({ kind: 'month' }));
+
+test('manual Etsy sale is blocked only while connected', () => {
+  expect(manualEtsyBlocked('etsy', 'connected')).toBe('Etsy is connected, so Etsy orders are added automatically.');
+  expect(manualEtsyBlocked('etsy', 'reconnect')).toBeNull();
+  expect(manualEtsyBlocked('etsy', null)).toBeNull();
+  expect(manualEtsyBlocked('store', 'connected')).toBeNull();
+});
