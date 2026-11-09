@@ -27,7 +27,7 @@ export default async function SalesPage({ params }: { params: Promise<{ key: str
           {s.sales.map(x => (
             <tr key={x.id}>
               <td>{dayKey(x.sold_at, tz)}</td><td>{x.channel}</td><td>{sku.get(x.product_id)}</td><td>{x.qty}</td><td>{money(x.unit_price, x.currency)}</td>
-              <td><DeleteButton action={deleteSaleAction.bind(null, key, x.id)} ask="Delete this sale? Stock goes back up." /></td>
+              <td>{x.etsy_transaction_id ? 'From Etsy' : <DeleteButton action={deleteSaleAction.bind(null, key, x.id)} ask="Delete this sale? Stock goes back up." />}</td>
             </tr>
           ))}
           {s.sales.length === 0 && <tr><td colSpan={6}>No sales yet.</td></tr>}

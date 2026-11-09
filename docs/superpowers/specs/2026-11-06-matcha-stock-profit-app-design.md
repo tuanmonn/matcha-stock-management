@@ -25,7 +25,7 @@ No ORM, UI library, chart library or auth library.
 - **Server actions:** Every action checks the key itself, because actions can be called directly, not only from pages.
 - **Leak reduction:** `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex` on every response.
 - **Machine endpoints:** The Etsy webhook is checked by its signature. The daily job is checked by Vercel's `CRON_SECRET` header.
-- **Read-only Etsy access:** The app asks Etsy only for read scopes (`transactions_r`, `listings_r`), so a bug in the app can't change your listings. Whether `listings_r` is enough to read active listing quantities is confirmed in phase 2.
+- **Read-only Etsy access:** The app asks Etsy only for read scopes (`transactions_r`, `listings_r`, `shops_r`), so a bug in the app can't change your listings. `shops_r` is needed by `getMe`, which returns your shop id. Active listing quantities come from `getListingsByShop` (`listings_r`). Confirmed against Etsy's OpenAPI file, 9 November 2026.
 - **Secrets:** Etsy keys, tokens and the Telegram token stay on the server and never reach the browser.
 - **Changing the key:** If the link leaks, change `APP_KEY` in Vercel and share the new link.
 
@@ -129,7 +129,7 @@ Mismatches are only caught here. Etsy's `inventory.updated` event doesn't fire o
 | Stock | Computer | Count, average cost, expiry dates and history per SKU. Corrections. |
 | Shipments | Computer | List and new-shipment form |
 | Sales and expenses | Computer | Sales list, expenses, and past monthly totals |
-| Settings | Computer | Products, yearly rates, time zone, Etsy connect, Telegram test, export |
+| Settings | Computer | Products (each linked by picking from a list of your active Etsy listings), yearly rates, time zone, Etsy connect and sync now, Telegram test, export |
 
 ## 9. Error handling
 
@@ -159,18 +159,17 @@ Manual checks follow the acceptance column of each FR. Your friend tests the sal
 | Phase | Delivers | Done when |
 | --- | --- | --- |
 | 1. Core | Private link, products, shipments, sales form with channel switch, corrections, expenses, past totals, reports, in-app warnings, export | Automated tests pass, and your friend records a store sale on a phone |
-| 2. Etsy read | OAuth connection, webhook, catch-up, ledger import and fee map | One month reconciles to your Etsy statement |
-| 3. Mismatch check | Daily comparison of app stock with Etsy quantities | A quantity you change on Etsy is flagged the next day |
-| 4. Telegram | Bot alerts | Test alerts arrive once each |
+| 2. Etsy read | OAuth connection, listing picker, webhook, catch-up, ledger import and fee map, and the daily mismatch check (merged in from phase 3 on 9 November 2026) | One month reconciles to your Etsy statement, and a quantity you change on Etsy is flagged the next day |
+| 3. Telegram | Bot alerts | Test alerts arrive once each |
 
-Phase 1 doesn't depend on Etsy approval. Phases 2 and 3 need your API key. Pushing quantities to Etsy (FR-07, FR-08) is in the backlog.
+Phase 1 doesn't depend on Etsy approval. Phase 2 needs your API key. Pushing quantities to Etsy (FR-07, FR-08) is in the backlog.
 
 ## 12. Assumptions to confirm during the build
 
 | Item | Default until confirmed | Confirmed in |
 | --- | --- | --- |
 | Store's state, which sets the time zone | Ask before phase 1 ships | Phase 1 |
-| Each SKU is one Etsy listing without variations | The mismatch check reads every product in the listing | Phase 3 |
+| Each SKU is one Etsy listing without variations | The mismatch check reads every product in the listing | Phase 2 |
 | Receipt fields for item price and discounts | Price × quantity minus discount | Phase 2 |
 | Real `ledger_type` names | Unknown types show as uncategorized | Phase 2 |
 | Neon free-plan terms: no business-use ban found, but the governing [Databricks agreement](https://www.databricks.com/legal/mcsa) wasn't read | Proceed, and keep export available | You, any time |

@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { requireKey } from '@/lib/access';
 import { loadSnapshot } from '@/lib/data';
+import { dismissIssueAction } from './actions';
 import { parseRange } from '@/lib/forms';
 import { formatUsd, formatVnd, usdCentsToVnd } from '@/lib/money';
 import type { Window } from '@/lib/periods';
 import type { Totals } from '@/lib/profit';
 import { buildDashboard } from '@/lib/report';
 import type { Warning } from '@/lib/alerts';
+import type { Snapshot } from '@/lib/data';
 import Chart from './Chart';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +19,24 @@ const dmy = (d: string) => `${dm(d)} ${d.slice(0, 4)}`;
 const label = (w: Window) => (w.from === w.to ? dm(w.from) : w.from.slice(0, 7) === w.to.slice(0, 7) ? `${Number(w.from.slice(8))}–${dm(w.to)}` : `${dm(w.from)} – ${dm(w.to)}`);
 const pct = (m: number | null) => (m === null ? '—' : `${(m * 100).toFixed(1)}%`);
 
-function Warnings({ warnings, name }: { warnings: Warning[]; name: Map<string, string> }) {
+function EtsyWarnings({ s, uncategorizedCents, keyValue }: { s: Snapshot; uncategorizedCents: number; keyValue: string }) {
+  return (
+    <>
+      {s.etsy.status === 'reconnect' && <p className="warn bad">Etsy access ended. Reconnect in Settings. Until then, record Etsy orders on the sale screen.</p>}
+      {s.issues.map(i => (
+        <form key={i.id} action={dismissIssueAction.bind(null, keyValue, i.id)}>
+          <p className="warn bad">{i.detail} <button type="submit">Dismiss</button></p>
+        </form>
+      ))}
+      {uncategorizedCents > 0 && <p className="warn">{formatUsd(uncategorizedCents)} of Etsy charges this period aren&apos;t sorted into fees or ads yet.</p>}
+    </>
+  );
+}
+
+const etsyExtra = (s: Snapshot, cents: number, key: string) =>
+  s.etsy.status === 'reconnect' || s.issues.length > 0 || cents > 0 ? <EtsyWarnings s={s} uncategorizedCents={cents} keyValue={key} /> : undefined;
+
+function Warnings({ warnings, name, extra }: { warnings: Warning[]; name: Map<string, string>; extra?: React.ReactNode }) {
   const warn = (w: Warning): { text: string; bad: boolean } => {
     const n = name.get(w.productId) ?? 'Product';
     if (w.kind === 'expiry') {
@@ -29,10 +48,11 @@ function Warnings({ warnings, name }: { warnings: Warning[]; name: Map<string, s
     return { text: `${n}: Only ${w.stock} left`, bad: false };
   };
 
-  if (warnings.length === 0) return null;
+  if (warnings.length === 0 && !extra) return null;
   return (
     <>
       <h2>Warnings</h2>
+      {extra}
       {warnings.map((w, i) => { const x = warn(w); return <p key={i} className={`warn${x.bad ? ' bad' : ''}`}>{x.text}</p>; })}
     </>
   );
@@ -50,11 +70,11 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   const base = `/${key}`;
 
   if (d.status === 'needs_time_zone') {
-    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p></>;
+    return <><h1>Dashboard</h1><p><Link className="link" href={`${base}/settings`}>Set the store&apos;s time zone in Settings</Link></p><Warnings warnings={[]} name={new Map()} extra={etsyExtra(s, 0, key)} /></>;
   }
   const name = new Map(s.products.map(p => [p.id, p.name]));
   if (d.status === 'missing_rate') {
-    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} /></>;
+    return <><h1>Dashboard</h1><p>Add the {d.year} exchange rate in <Link href={`${base}/settings`}>Settings</Link> to see reports.</p><Warnings warnings={d.warnings} name={name} extra={etsyExtra(s, 0, key)} /></>;
   }
 
   const year = Number(d.today.slice(0, 4));
@@ -102,7 +122,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
       )}
       {sp.range === 'custom' && range.kind === 'month' && <p className="muted">That date range was not valid, so this month is shown.</p>}
 
-      <Warnings warnings={d.warnings} name={name} />
+      <Warnings warnings={d.warnings} name={name} extra={etsyExtra(s, d.uncategorizedFeesCents, key)} />
 
       <h2>Profit by day</h2>
       <Chart current={d.series.current} previous={d.series.previous} />

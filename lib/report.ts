@@ -16,7 +16,7 @@ export type Dashboard =
     current: Summary; previous: Summary;
     series: { current: DayPoint[]; previous: DayPoint[] };
     stock: (StockInfo & { avgCostCents: number })[];
-    warnings: Warning[];
+    warnings: Warning[]; uncategorizedFeesCents: number;
   };
 
 type StockInfo = { productId: string; stock: number; earliestExpiry: string | null };
@@ -90,7 +90,7 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
     if (historyMonths.has(day.slice(0, 7)) || !inEither(day)) continue;
     saleLines.push({
       day, channel: sale.channel, productId: sale.product_id, orderId: sale.etsy_receipt_id ?? sale.id, qty: sale.qty,
-      revenue: toUsdCents(sale.qty * sale.unit_price, sale.currency, yearOf(day), s.rates), cogs: cogs[sale.id] ?? 0,
+      revenue: toUsdCents(sale.qty * sale.unit_price - sale.discount, sale.currency, yearOf(day), s.rates), cogs: cogs[sale.id] ?? 0,
     });
   }
 
@@ -98,6 +98,18 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
   const costs: CostLine[] = s.expenses.filter(x => inEither(x.spent_on)).map(x => ({
     day: x.spent_on, amount: toUsdCents(x.amount, x.currency, yearOf(x.spent_on), s.rates), kind: 'expense' as const,
   }));
+
+  // Fees and ads in either window; a refund is a positive amount, so it lowers costs. Uncategorized is only reported.
+  const ledgerUsd = (l: Snapshot['ledger'][number], day: string) => -toUsdCents(l.amount, l.currency, yearOf(day), s.rates);
+  for (const l of s.ledger) {
+    const day = dayKey(l.at, tz);
+    if ((l.category === 'fee' || l.category === 'ads') && inEither(day))
+      costs.push({ day, amount: ledgerUsd(l, day), kind: l.category, productId: l.product_id ?? undefined });
+  }
+  const uncategorizedFeesCents = s.ledger.reduce((n, l) => {
+    const day = dayKey(l.at, tz);
+    return l.category === 'uncategorized' && inWindow(day, windows.current) ? n + ledgerUsd(l, day) : n;
+  }, 0);
 
   const side = (w: Window): Summary => {
     const lastDay = (m: string) => new Date(Date.UTC(yearOf(m), Number(m.slice(5, 7)), 0)).toISOString().slice(0, 10);
@@ -114,6 +126,6 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
     current: side(windows.current), previous: side(windows.previous),
     series: { current: dailySeries(saleLines, costs, windows.current), previous: dailySeries(saleLines, costs, windows.previous) },
     stock: sw.stock.map(x => ({ ...x, avgCostCents: avg[x.productId] })),
-    warnings: sw.warnings,
+    warnings: sw.warnings, uncategorizedFeesCents,
   };
 }

@@ -45,6 +45,9 @@ function amount(s: string, currency: Currency, label: string, min: number): numb
 
 const currency = (f: FormData, k: string): Currency => oneOf(str(f, k) || 'USD', ['USD', 'VND'], 'Currency');
 
+export const manualEtsyBlocked = (channel: string, status: string | null) =>
+  channel === 'etsy' && status === 'connected' ? 'Etsy is connected, so Etsy orders are added automatically.' : null;
+
 export function parseSale(f: FormData) {
   return wrap(() => {
     const id = str(f, 'id');
