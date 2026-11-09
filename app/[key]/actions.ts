@@ -1,5 +1,10 @@
 'use server';
+import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { sql } from '@/lib/db';
+import { pkce, authorizeUrl } from '@/lib/etsy/client';
+import { runDaily } from '@/lib/etsy/sync';
 import { requireKey } from '@/lib/access';
 import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory } from '@/lib/data';
 import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory } from '@/lib/forms';
@@ -109,5 +114,24 @@ export async function deleteHistoryAction(key: string, id: string): Promise<void
 export async function clearExpiryAction(key: string, id: string): Promise<void> {
   requireKey(key);
   await clearExpiry(id);
+  revalidatePath(`/${key}`, 'layout');
+}
+
+export async function connectEtsyAction(key: string): Promise<void> {
+  requireKey(key);
+  const { verifier, challenge } = pkce();
+  const state = randomBytes(32).toString('base64url');
+  await sql`update settings set etsy_oauth_state = ${state}, etsy_code_verifier = ${verifier}, etsy_oauth_started_at = now() where id = 1`;
+  redirect(authorizeUrl(state, challenge));
+}
+
+export async function syncNowAction(key: string, _prev: State): Promise<State> {
+  requireKey(key);
+  return attempt(key, async () => (await runDaily(new Date())).join('. '));
+}
+
+export async function dismissIssueAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await sql`update sync_issues set resolved_at = now() where id = ${id}`;
   revalidatePath(`/${key}`, 'layout');
 }
