@@ -94,3 +94,44 @@ create table if not exists settings (
 );
 
 insert into settings (id) values (1) on conflict do nothing;
+
+create table if not exists etsy_ledger (
+  entry_id text primary key,
+  at timestamptz not null,
+  ledger_type text not null,
+  reference_type text,
+  reference_id text,
+  amount bigint not null,
+  currency text not null check (currency in ('USD','VND')),
+  category text not null check (category in ('fee','ads','ignore','uncategorized')),
+  product_id uuid references products,
+  raw jsonb
+);
+
+create table if not exists sync_issues (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('mismatch','unknown_listing','etsy_error')),
+  ref text not null,
+  detail text not null default '',
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  unique (kind, ref)
+);
+
+create table if not exists webhook_events (
+  webhook_id text primary key,
+  received_at timestamptz not null default now()
+);
+
+alter table sales add column if not exists discount bigint not null default 0 check (discount >= 0);
+
+alter table settings add column if not exists etsy_shop_id text;
+alter table settings add column if not exists etsy_user_id text;
+alter table settings add column if not exists etsy_access_token text;
+alter table settings add column if not exists etsy_refresh_token text;
+alter table settings add column if not exists etsy_expires_at timestamptz;
+alter table settings add column if not exists etsy_connected_at timestamptz;
+alter table settings add column if not exists etsy_status text check (etsy_status in ('connected','reconnect'));
+alter table settings add column if not exists etsy_oauth_state text;
+alter table settings add column if not exists etsy_code_verifier text;
+alter table settings add column if not exists etsy_oauth_started_at timestamptz;

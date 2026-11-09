@@ -19,7 +19,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
     rows<Product>(sql`select * from products order by sku`),
     rows<Shipment>(sql`select id, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
     rows<ShipmentLine>(sql`select id, shipment_id, product_id, units, vendor_amount::float8 as vendor_amount, vendor_currency, expiry_date::text as expiry_date from shipment_lines`),
-    rows<Sale>(sql`select id, channel, to_char(sold_at at time zone 'UTC', ${sql.unsafe(ISO)}) as sold_at, product_id, qty, unit_price::float8 as unit_price, currency, etsy_receipt_id, etsy_transaction_id from sales order by sold_at desc`),
+    rows<Sale>(sql`select id, channel, to_char(sold_at at time zone 'UTC', ${sql.unsafe(ISO)}) as sold_at, product_id, qty, unit_price::float8 as unit_price, discount::float8 as discount, currency, etsy_receipt_id, etsy_transaction_id from sales order by sold_at desc`),
     rows<StockMove>(sql`select id, product_id, qty_delta, kind, ref, reason, to_char(at at time zone 'UTC', ${sql.unsafe(ISO)}) as at from stock_moves order by at desc`),
     rows<Expense>(sql`select id, spent_on::text as spent_on, category, amount::float8 as amount, currency, note from expenses order by spent_on desc`),
     rows<HistoryRow>(sql`select id, month::text as month, product_id, channel, units, revenue::float8 as revenue, currency, orders from monthly_history order by month desc`),

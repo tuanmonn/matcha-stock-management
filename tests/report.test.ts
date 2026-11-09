@@ -5,7 +5,7 @@ import type { Expense, HistoryRow, Sale, StockMove } from '@/lib/types';
 
 const month = { kind: 'month' as const };
 const now = new Date('2026-11-10T12:00:00Z');
-const mkSale = (id: string, qty: number, sold_at: string): Sale => ({ id, channel: 'store', sold_at, product_id: 'p1', qty, unit_price: 5000, currency: 'USD', etsy_receipt_id: null, etsy_transaction_id: null });
+const mkSale = (id: string, qty: number, sold_at: string): Sale => ({ id, channel: 'store', sold_at, product_id: 'p1', qty, unit_price: 5000, discount: 0, currency: 'USD', etsy_receipt_id: null, etsy_transaction_id: null });
 const mkMove = (s: Sale): StockMove => ({ id: `m-${s.id}`, product_id: 'p1', qty_delta: -s.qty, kind: 'sale', ref: s.id, reason: '', at: s.sold_at });
 
 const novSale = mkSale('s-nov', 2, '2026-11-05T15:00:00Z');

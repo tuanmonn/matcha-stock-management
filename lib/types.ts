@@ -13,7 +13,7 @@ export type ShipmentLine = {
 };
 export type Sale = {
   id: string; channel: 'etsy' | 'store'; sold_at: string; product_id: string; qty: number;
-  unit_price: number; currency: Currency; etsy_receipt_id: string | null; etsy_transaction_id: string | null;
+  unit_price: number; discount: number; currency: Currency; etsy_receipt_id: string | null; etsy_transaction_id: string | null;
 };
 export type StockMove = {
   id: string; product_id: string; qty_delta: number; kind: 'shipment' | 'sale' | 'correction';
@@ -25,3 +25,8 @@ export type HistoryRow = {
   revenue: number; currency: Currency; orders: number;
 };
 export type ExpiryDate = { id: string; product_id: string; expiry_date: string; cleared_at: string | null };
+export type LedgerRow = {
+  entry_id: string; at: string; category: 'fee' | 'ads' | 'ignore' | 'uncategorized'; amount: number;
+  currency: Currency; product_id: string | null; ledger_type: string;
+};
+export type SyncIssue = { id: string; kind: 'mismatch' | 'unknown_listing' | 'etsy_error'; ref: string; detail: string; created_at: string };
