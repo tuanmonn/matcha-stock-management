@@ -39,8 +39,10 @@ export async function getAccessToken(now: Date, f: typeof fetch = fetch): Promis
 
   const r = await tokenPost({ grant_type: 'refresh_token', refresh_token: s.etsy_refresh_token }, f);
   if (r.status === 400 && (await r.json().catch(() => null))?.error === 'invalid_grant') {
-    await sql`update settings set etsy_status = 'reconnect' where id = 1`;
-    throw new EtsyAuthError();
+    // Only if our token is still the stored one; otherwise a concurrent refresh rotated it and the connection is fine.
+    const marked = await sql`update settings set etsy_status = 'reconnect' where id = 1 and etsy_refresh_token = ${s.etsy_refresh_token} returning id`;
+    if (marked.length) throw new EtsyAuthError();
+    return (await sql`select etsy_access_token from settings where id = 1`)[0].etsy_access_token;
   }
   if (!r.ok) throw new EtsyError(r.status, 'token');
   const t: Tokens = await r.json();

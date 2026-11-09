@@ -105,4 +105,14 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy client (database)', () => 
     await expect(c.getAccessToken(now, f)).rejects.toBeInstanceOf(c.EtsyAuthError);
     expect((await row()).etsy_status).toBe('reconnect');
   });
+
+  test('invalid_grant after another process refreshed keeps connected', async () => {
+    await setTokens('1.old', 'r-old', new Date(now.getTime() + 10_000));
+    const f = (async () => {
+      await setTokens('1.winner', 'r-winner', new Date(now.getTime() + 3600_000));
+      return json(400, { error: 'invalid_grant' });
+    }) as unknown as typeof fetch;
+    expect(await c.getAccessToken(now, f)).toBe('1.winner');
+    expect((await row()).etsy_status).toBe('connected');
+  });
 });
