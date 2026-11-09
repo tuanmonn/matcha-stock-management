@@ -1,13 +1,14 @@
 import { sql } from './db';
 import type { Parsed } from './forms';
 import type { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct } from './forms';
-import type { Expense, ExpiryDate, HistoryRow, Product, Rates, Sale, Shipment, ShipmentLine, StockMove } from './types';
+import type { Expense, ExpiryDate, HistoryRow, LedgerRow, Product, Rates, Sale, Shipment, ShipmentLine, StockMove, SyncIssue } from './types';
 
 type Ok<F extends (f: FormData) => Parsed<unknown>> = Extract<ReturnType<F>, { ok: true }>['value'];
 
 export type Snapshot = {
   products: Product[]; shipments: Shipment[]; lines: ShipmentLine[]; sales: Sale[]; moves: StockMove[];
   expenses: Expense[]; history: HistoryRow[]; expiry: ExpiryDate[]; rates: Rates; timeZone: string | null;
+  ledger: LedgerRow[]; issues: SyncIssue[]; etsy: { status: 'connected' | 'reconnect' | null };
 };
 
 const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
@@ -15,7 +16,7 @@ const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const rows = <T>(p: Promise<unknown>) => p as Promise<T[]>;
 
 export async function loadSnapshot(): Promise<Snapshot> {
-  const [products, shipments, lines, sales, moves, expenses, history, expiry, fx, settings] = await Promise.all([
+  const [products, shipments, lines, sales, moves, expenses, history, expiry, fx, settings, ledger, issues] = await Promise.all([
     rows<Product>(sql`select * from products order by sku`),
     rows<Shipment>(sql`select id, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
     rows<ShipmentLine>(sql`select id, shipment_id, product_id, units, vendor_amount::float8 as vendor_amount, vendor_currency, expiry_date::text as expiry_date from shipment_lines`),
@@ -25,12 +26,15 @@ export async function loadSnapshot(): Promise<Snapshot> {
     rows<HistoryRow>(sql`select id, month::text as month, product_id, channel, units, revenue::float8 as revenue, currency, orders from monthly_history order by month desc`),
     rows<ExpiryDate>(sql`select id, product_id, expiry_date::text as expiry_date, to_char(cleared_at at time zone 'UTC', ${sql.unsafe(ISO)}) as cleared_at from expiry_dates order by expiry_date`),
     rows<{ year: number; vnd_per_usd: number }>(sql`select year, vnd_per_usd::float8 as vnd_per_usd from fx_rates`),
-    rows<{ time_zone: string | null }>(sql`select time_zone from settings where id = 1`),
+    rows<{ time_zone: string | null; etsy_status: 'connected' | 'reconnect' | null }>(sql`select time_zone, etsy_status from settings where id = 1`),
+    rows<LedgerRow>(sql`select entry_id, to_char(at at time zone 'UTC', ${sql.unsafe(ISO)}) as at, ledger_type, category, amount::float8 as amount, currency, product_id from etsy_ledger order by at desc`),
+    rows<SyncIssue>(sql`select id, kind, ref, detail, to_char(created_at at time zone 'UTC', ${sql.unsafe(ISO)}) as created_at from sync_issues where resolved_at is null order by created_at`),
   ]);
   return {
     products, shipments, lines, sales, moves, expenses, history, expiry,
     rates: Object.fromEntries(fx.map(r => [r.year, r.vnd_per_usd])),
     timeZone: settings[0]?.time_zone ?? null,
+    ledger, issues, etsy: { status: settings[0]?.etsy_status ?? null },
   };
 }
 

@@ -15,7 +15,7 @@ export default async function SalePage({ params }: { params: Promise<{ key: stri
   return (
     <>
       <h1>Record a sale</h1>
-      <SaleForm keyValue={key} products={products} firstId={crypto.randomUUID()} today={todayKey(new Date(), s.timeZone)} />
+      <SaleForm keyValue={key} products={products} firstId={crypto.randomUUID()} etsyConnected={s.etsy.status === 'connected'} today={todayKey(new Date(), s.timeZone)} />
     </>
   );
 }

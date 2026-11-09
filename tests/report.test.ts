@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { buildDashboard } from '@/lib/report';
 import type { Snapshot } from '@/lib/data';
-import type { Expense, HistoryRow, Sale, StockMove } from '@/lib/types';
+import type { Expense, HistoryRow, LedgerRow, Sale, StockMove } from '@/lib/types';
 
 const month = { kind: 'month' as const };
 const now = new Date('2026-11-10T12:00:00Z');
@@ -18,6 +18,7 @@ const snap: Snapshot = {
   moves: [{ id: 'm0', product_id: 'p1', qty_delta: 10, kind: 'shipment', ref: 'l1', reason: '', at: '2026-10-01T00:00:00.000Z' }, mkMove(novSale), mkMove(octSale)],
   expenses: [], history: [], expiry: [{ id: 'e1', product_id: 'p1', expiry_date: '2027-10-01', cleared_at: null }],
   rates: { 2026: 25000 }, timeZone: 'America/New_York',
+  ledger: [], issues: [], etsy: { status: null },
 };
 const exp: Expense = { id: 'x1', spent_on: '2026-11-02', category: 'gift', amount: 1000, currency: 'USD', note: '' };
 const hist = (m: string, units: number, revenue: number, orders: number): HistoryRow => ({ id: 'h1', month: m, product_id: 'p1', channel: 'etsy', units, revenue, currency: 'USD', orders });
@@ -51,3 +52,24 @@ test('expired product shows as expired', () => {
   expect(d.warnings).toContainEqual({ productId: 'p1', kind: 'expiry', level: 'expired', expiryDate: '2026-11-01' });
 });
 test('week range and daily series', () => { const d = buildDashboard(snap, now, { kind: 'week' }) as any; expect(d.windows.current).toEqual({ from: '2026-11-09', to: '2026-11-10' }); expect(d.series.current).toHaveLength(2); });
+
+const led = (entry_id: string, category: LedgerRow['category'], amount: number, product_id: string | null = null): LedgerRow =>
+  ({ entry_id, at: '2026-11-05T15:00:00Z', category, amount, currency: 'USD', product_id, ledger_type: 'x' });
+const shop = (ledger: LedgerRow[]) => (buildDashboard({ ...snap, ledger }, now, month) as any);
+test('discount lowers revenue', () => {
+  const d = buildDashboard({ ...snap, sales: [{ ...novSale, discount: 1500 }, octSale] }, now, month) as any;
+  expect(d.current.shop.revenue).toBe(8500);
+});
+test('fee and ads ledger rows count as costs and a refund lowers them', () => {
+  const d = shop([led('a', 'fee', -300), led('b', 'ads', -200), led('c', 'fee', 100)]);
+  expect(d.current.shop).toMatchObject({ fees: 200, ads: 200, profit: 7600 - 400 });
+});
+test("fee with product counts in that SKU's profit, ads don't", () => {
+  const d = shop([led('a', 'fee', -300, 'p1'), led('b', 'ads', -200, 'p1')]);
+  expect(d.current.bySku.p1.profit).toBe(7600 - 300);
+});
+test('uncategorized ledger total is reported and not counted in profit', () => {
+  const d = shop([led('a', 'uncategorized', -450), led('b', 'ignore', -999)]);
+  expect(d.uncategorizedFeesCents).toBe(450);
+  expect(d.current.shop.profit).toBe(7600);
+});
