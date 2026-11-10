@@ -38,9 +38,9 @@ export default function Chart({ current, previous }: { current: DayPoint[]; prev
 
   return (
     <section>
-      <div className="filters" role="group" aria-label="Measure">
+      <div className="seg" role="group" aria-label="Measure">
         {(Object.keys(LABEL) as Measure[]).map(m => (
-          <button key={m} type="button" className={m === measure ? 'primary' : ''} aria-pressed={m === measure} onClick={() => setMeasure(m)}>{LABEL[m]}</button>
+          <button key={m} type="button" aria-pressed={m === measure} onClick={() => setMeasure(m)}>{LABEL[m]}</button>
         ))}
       </div>
 
@@ -54,19 +54,19 @@ export default function Chart({ current, previous }: { current: DayPoint[]; prev
             if (e.key === 'ArrowLeft') setHover(h => Math.max(0, (h ?? n) - 1));
             if (e.key === 'ArrowRight') setHover(h => Math.min(n - 1, (h ?? -1) + 1));
           }}>
-          <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="#8A918A" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          {ticks.map(k => <text key={k.value} x={W - 4} y={y(k.value) + 4} fontSize="13" textAnchor="end" fill="#5b665b">{k.label}</text>)}
-          {firstDay && <text x={L} y={H - 6} fontSize="13" fill="#5b665b">{short(firstDay)}</text>}
-          {lastDay && n > 1 && <text x={x(n - 1)} y={H - 6} fontSize="13" textAnchor="end" fill="#5b665b">{short(lastDay)}</text>}
-          <polyline points={line(previous)} fill="none" stroke="#8A918A" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
-          <polyline points={line(current)} fill="none" stroke="#2a78d6" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-          {previous.length > 0 && <text x={x(previous.length - 1) + 6} y={y(val(previous[previous.length - 1])!) + 14} fontSize="12" fill="#5b665b">Previous</text>}
-          {current.length > 0 && <text x={x(current.length - 1) + 6} y={y(val(current[current.length - 1])!) - 4} fontSize="12" fill="#2a78d6">This period</text>}
-          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="#1c241c" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+          <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="var(--grey)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          {ticks.map(k => <text key={k.value} x={W - 4} y={y(k.value) + 4} fontSize="13" textAnchor="end" fill="var(--muted)">{k.label}</text>)}
+          {firstDay && <text x={L} y={H - 6} fontSize="13" fill="var(--muted)">{short(firstDay)}</text>}
+          {lastDay && n > 1 && <text x={x(n - 1)} y={H - 6} fontSize="13" textAnchor="end" fill="var(--muted)">{short(lastDay)}</text>}
+          <polyline points={line(previous)} fill="none" stroke="var(--grey)" strokeWidth={2} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
+          <polyline points={line(current)} fill="none" stroke="var(--blue)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          {previous.length > 0 && <text x={x(previous.length - 1) + 6} y={y(val(previous[previous.length - 1])!) + 14} fontSize="12" fill="var(--muted)">Previous</text>}
+          {current.length > 0 && <text x={x(current.length - 1) + 6} y={y(val(current[current.length - 1])!) - 4} fontSize="12" fill="var(--blue)">This period</text>}
+          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="var(--ink)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
         </svg>
         {hover !== null && (
           <div className="card" role="status" style={{ position: 'absolute', top: 4, left: `${Math.min(60, (x(hover) / W) * 100)}%`, pointerEvents: 'none', fontSize: 14 }}>
-            {cur && <div><strong>{fmt(cur[measure])}</strong> <span style={{ color: '#2a78d6' }}>this period</span> · {short(cur.day)}</div>}
+            {cur && <div><strong>{fmt(cur[measure])}</strong> <span style={{ color: 'var(--blue)' }}>this period</span> · {short(cur.day)}</div>}
             {prev && <div><strong>{fmt(prev[measure])}</strong> <span className="muted">previous</span> · {short(prev.day)}</div>}
           </div>
         )}
