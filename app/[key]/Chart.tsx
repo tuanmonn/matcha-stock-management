@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatUsd } from '@/lib/money';
 import type { DayPoint } from '@/lib/profit';
 import { yTicks } from '@/lib/ticks';
@@ -9,12 +9,21 @@ const LABEL: Record<Measure, string> = { profit: 'Profit', revenue: 'Revenue', u
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const short = (d: string) => `${Number(d.slice(8))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
 
-const W = 640, H = 270, L = 8, R = 84, T = 12, B = 26;
+const W = 640, L = 8, T = 12;
 
 export default function Chart({ current, previous, bucket }: { current: DayPoint[]; previous: DayPoint[]; bucket: 'day' | 'month' }) {
   const [measure, setMeasure] = useState<Measure>('profit');
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
+  const ref = useRef<SVGSVGElement>(null);
+  const [px, setPx] = useState(W);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const ro = new ResizeObserver(([e]) => setPx(e.contentRect.width || W));
+    ro.observe(el); return () => ro.disconnect();
+  }, []);
+  // The SVG is scaled to its box, so on narrow screens grow text, margins and height to keep labels ~13px.
+  const k = Math.max(1, W / px), fs = 13 * k, H = Math.round(Math.min(270 * k, 420)), R = Math.round(84 * k), B = Math.round(26 * k);
 
   const ghost = bucket === 'day' && previous.length > 0;
   const lab = (d: string) => (bucket === 'month' ? MONTHS[Number(d.slice(5, 7)) - 1] : short(d));
@@ -48,7 +57,7 @@ export default function Chart({ current, previous, bucket }: { current: DayPoint
       </div>
 
       <div className="chartbox" style={{ position: 'relative' }}>
-        <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" tabIndex={0}
+        <svg ref={ref} className="chart" viewBox={`0 0 ${W} ${H}`} role="img" tabIndex={0}
           aria-label={`${LABEL[measure]} by ${bucket}${ghost ? ', this period against the previous one' : ''}`}
           onMouseMove={e => at(e.clientX, e.currentTarget.getBoundingClientRect())}
           onMouseLeave={() => setHover(null)}
@@ -59,12 +68,12 @@ export default function Chart({ current, previous, bucket }: { current: DayPoint
           }}>
           {hover !== null && <rect x={L + hover * slot} y={T} width={slot} height={H - T - B} fill="var(--green-soft)" />}
           <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="var(--grey)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          {ticks.map(k => <text key={k.value} x={W - 4} y={y(k.value) + 4} fontSize="13" textAnchor="end" fill="var(--muted)">{k.label}</text>)}
+          {ticks.map(t => <text key={t.value} x={W - 4} y={y(t.value) + fs * 0.3} fontSize={fs} textAnchor="end" fill="var(--muted)">{t.label}</text>)}
           {bucket === 'month'
-            ? current.map((p, i) => <text key={p.day} x={L + (i + 0.5) * slot} y={H - 6} fontSize="13" textAnchor="middle" fill="var(--muted)">{lab(p.day)}</text>)
+            ? current.map((p, i) => <text key={p.day} x={L + (i + 0.5) * slot} y={H - 6} fontSize={fs} textAnchor="middle" fill="var(--muted)">{lab(p.day)}</text>)
             : <>
-              {firstDay && <text x={L} y={H - 6} fontSize="13" fill="var(--muted)">{short(firstDay)}</text>}
-              {lastDay && n > 1 && <text x={L + (current.length - 0.5) * slot} y={H - 6} fontSize="13" textAnchor="end" fill="var(--muted)">{short(lastDay)}</text>}
+              {firstDay && <text x={L} y={H - 6} fontSize={fs} fill="var(--muted)">{short(firstDay)}</text>}
+              {lastDay && n > 1 && <text x={L + (current.length - 0.5) * slot} y={H - 6} fontSize={fs} textAnchor="end" fill="var(--muted)">{short(lastDay)}</text>}
             </>}
           {ghost && previous.map((p, i) => bar(p, i, 0, 'var(--grey)', 0.45))}
           {current.map((p, i) => bar(p, i, ghost ? 1 : 0, 'var(--green)', 1))}
