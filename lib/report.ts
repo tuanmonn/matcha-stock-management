@@ -2,8 +2,8 @@ import { stockOf, type Snapshot } from './data';
 import { MissingRateError, toUsdCents } from './money';
 import { allocateFreight } from './freight';
 import { replayCost, type CostEvent } from './cost';
-import { dayKey, inWindow, rangeWindows, type Range, type Window } from './periods';
-import { dailySeries, historyLines, summarize, type CostLine, type DayPoint, type SaleLine } from './profit';
+import { dayKey, daysIn, inWindow, rangeWindows, type Range, type Window } from './periods';
+import { dailySeries, historyLines, monthlySeries, summarize, type CostLine, type DayPoint, type SaleLine } from './profit';
 import { warnings, type Warning } from './alerts';
 
 type Summary = ReturnType<typeof summarize> & { approximate: boolean };
@@ -12,9 +12,9 @@ export type Dashboard =
   | { status: 'needs_time_zone' }
   | { status: 'missing_rate'; year: number; stock: StockInfo[]; warnings: Warning[] }
   | {
-    status: 'ok'; today: string; windows: { current: Window; previous: Window };
-    current: Summary; previous: Summary;
-    series: { current: DayPoint[]; previous: DayPoint[] };
+    status: 'ok'; today: string; windows: { current: Window; previous: Window | null };
+    current: Summary; previous: Summary | null; lifetime: (Summary & { since: string }) | null;
+    series: { current: DayPoint[]; previous: DayPoint[]; bucket: 'day' | 'month' };
     stock: (StockInfo & { avgCostCents: number })[];
     warnings: Warning[]; uncategorizedFeesCents: number;
   };
@@ -27,13 +27,20 @@ export function buildDashboard(s: Snapshot, now: Date, range: Range): Dashboard 
   const tz = s.timeZone;
   if (!tz) return { status: 'needs_time_zone' };
   const today = dayKey(now.toISOString(), tz);
-  const windows = rangeWindows(range, today);
+  const since = firstActivity(s, tz);
+  const windows = rangeWindows(range, today, since);
   try {
-    return build(s, tz, today, windows);
+    return build(s, tz, today, windows, since ? { from: since, to: today } : null, range.kind === 'all' || daysIn(windows.current).length > 62 ? 'month' : 'day');
   } catch (e) {
     if (e instanceof MissingRateError) return { status: 'missing_rate', year: e.year, ...stockAndWarnings(s, today) };
     throw e;
   }
+}
+
+// Earliest day of any sale, ledger entry, expense or history month, in the store's time zone.
+function firstActivity(s: Snapshot, tz: string): string | null {
+  const days = [...s.sales.map(x => dayKey(x.sold_at, tz)), ...s.ledger.map(l => dayKey(l.at, tz)), ...s.expenses.map(x => x.spent_on), ...s.history.map(h => `${h.month.slice(0, 7)}-01`)];
+  return days.sort()[0] ?? null;
 }
 
 // Needs no currency conversion, so expiry and stock warnings still show when an exchange rate is missing.
@@ -44,7 +51,7 @@ function stockAndWarnings(s: Snapshot, today: string): { stock: StockInfo[]; war
   return { stock, warnings: warnings(stock.map(x => ({ ...x, lowStockAt: lowAt.get(x.productId) ?? 3 })), today) };
 }
 
-function build(s: Snapshot, tz: string, today: string, windows: { current: Window; previous: Window }): Dashboard {
+function build(s: Snapshot, tz: string, today: string, windows: { current: Window; previous: Window | null }, life: Window | null, bucket: 'day' | 'month'): Dashboard {
   const gramsOf = new Map(s.products.map(p => [p.id, p.grams]));
   const shipmentOf = new Map(s.shipments.map(sh => [sh.id, sh]));
 
@@ -78,7 +85,7 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
   }
 
   // Only what falls inside a window is converted, so an unrelated old VND entry can't block the report.
-  const inEither = (d: string) => inWindow(d, windows.current) || inWindow(d, windows.previous);
+  const inEither = (d: string) => inWindow(d, windows.current) || (windows.previous !== null && inWindow(d, windows.previous)) || (life !== null && inWindow(d, life));
 
   // 5. Months with past totals use only those rows; their live sales are dropped.
   const historyMonths = new Set(s.history.map(h => h.month.slice(0, 7)));
@@ -120,11 +127,16 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
   };
 
   const sw = stockAndWarnings(s, today);
+  const { previous } = windows;
+  // History rows sit on their month's first day (or the window start), so monthly bars can place them.
+  const histMonthly = (w: Window) => historyLines(s.history.filter(h => w.from.slice(0, 7) <= h.month.slice(0, 7) && h.month.slice(0, 7) <= w.to.slice(0, 7)), avg, s.rates).map(l => ({ ...l, day: l.day < w.from ? w.from : l.day }));
+  const series = (w: Window | null): DayPoint[] => !w ? [] : bucket === 'day' ? dailySeries(saleLines, costs, w) : monthlySeries([...saleLines, ...histMonthly(w)], costs, w);
 
   return {
     status: 'ok', today, windows,
-    current: side(windows.current), previous: side(windows.previous),
-    series: { current: dailySeries(saleLines, costs, windows.current), previous: dailySeries(saleLines, costs, windows.previous) },
+    current: side(windows.current), previous: previous && side(previous),
+    lifetime: life && { ...side(life), since: life.from },
+    series: { current: series(windows.current), previous: bucket === 'day' ? series(previous) : [], bucket },
     stock: sw.stock.map(x => ({ ...x, avgCostCents: avg[x.productId] })),
     warnings: sw.warnings, uncategorizedFeesCents,
   };

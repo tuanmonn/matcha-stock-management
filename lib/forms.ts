@@ -165,6 +165,7 @@ export const parseTimeZone = (f: FormData) => wrap(() => oneOf(str(f, 'time_zone
 
 export function parseRange(q: { range?: string; from?: string; to?: string }): Range {
   if (q.range === 'week') return { kind: 'week' };
+  if (q.range === 'all') return { kind: 'all' };
   if (q.range === 'custom' && q.from && q.to && isDay(q.from) && isDay(q.to) && q.from <= q.to) {
     const days = (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 + 1;
     if (days <= 366) return { kind: 'custom', from: q.from, to: q.to };
