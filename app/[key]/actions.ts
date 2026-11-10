@@ -6,6 +6,7 @@ import { sql } from '@/lib/db';
 import { pkce, authorizeUrl } from '@/lib/etsy/client';
 import { runDaily } from '@/lib/etsy/sync';
 import { requireKey } from '@/lib/access';
+import { dayKey } from '@/lib/periods';
 import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory } from '@/lib/data';
 import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory, manualEtsyBlocked } from '@/lib/forms';
 import type { State } from './ui';
@@ -28,8 +29,15 @@ export async function recordSale(key: string, _prev: State, f: FormData): Promis
   requireKey(key);
   const p = parseSale(f);
   if (!p.ok) return { error: p.error };
-  const [{ etsy_status }] = await sql`select etsy_status from settings where id = 1`;
-  const blocked = manualEtsyBlocked(p.value.channel, etsy_status);
+  let blocked: string | null = null;
+  try {
+    const [s] = await sql`select etsy_status, etsy_connected_at, time_zone from settings where id = 1`;
+    const connectedDay = s.etsy_connected_at ? dayKey(new Date(s.etsy_connected_at).toISOString(), s.time_zone ?? 'UTC') : null;
+    blocked = manualEtsyBlocked(p.value.channel, s.etsy_status, p.value.sold_on, connectedDay);
+  } catch (e) {
+    console.error(e);
+    return { error: SAVE_FAILED };
+  }
   if (blocked) return { error: blocked };
   let inserted = true;
   const r = await attempt(key, async () => {

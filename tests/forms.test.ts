@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import { parseSale, manualEtsyBlocked, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone, dropBlankLines } from '@/lib/forms';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
@@ -55,9 +55,17 @@ test('backwards range falls back to month', () => expect(parseRange({ range: 'cu
 test('range over 366 days falls back to month', () => expect(parseRange({ range: 'custom', from: '2025-01-01', to: '2026-11-01' })).toEqual({ kind: 'month' }));
 test('unknown range falls back to month', () => expect(parseRange({ range: 'year' })).toEqual({ kind: 'month' }));
 
-test('manual Etsy sale is blocked only while connected', () => {
-  expect(manualEtsyBlocked('etsy', 'connected')).toBe('Etsy is connected, so Etsy orders are added automatically.');
-  expect(manualEtsyBlocked('etsy', 'reconnect')).toBeNull();
-  expect(manualEtsyBlocked('etsy', null)).toBeNull();
-  expect(manualEtsyBlocked('store', 'connected')).toBeNull();
+describe('manualEtsyBlocked', () => {
+  const msg = 'Etsy orders from 2026-11-05 on are added automatically. Only earlier Etsy orders can be entered here.';
+  it('allows a sale before the connected day', () => expect(manualEtsyBlocked('etsy', 'connected', '2026-11-04', '2026-11-05')).toBeNull());
+  it('blocks a sale on the connected day', () => expect(manualEtsyBlocked('etsy', 'connected', '2026-11-05', '2026-11-05')).toBe(msg));
+  it('blocks a sale after the connected day', () => expect(manualEtsyBlocked('etsy', 'connected', '2026-11-06', '2026-11-05')).toBe(msg));
+  it('blocks when no date is given', () => expect(manualEtsyBlocked('etsy', 'connected', null, '2026-11-05')).toBe(msg));
+  it('allows when not connected', () => {
+    expect(manualEtsyBlocked('etsy', 'reconnect', '2026-11-06', '2026-11-05')).toBeNull();
+    expect(manualEtsyBlocked('etsy', null, '2026-11-06', null)).toBeNull();
+  });
+  it('uses the fallback message without a connected day', () =>
+    expect(manualEtsyBlocked('etsy', 'connected', '2026-11-04', null)).toBe('Etsy is connected, so Etsy orders are added automatically.'));
+  it('always allows the store channel', () => expect(manualEtsyBlocked('store', 'connected', '2026-11-06', '2026-11-05')).toBeNull());
 });

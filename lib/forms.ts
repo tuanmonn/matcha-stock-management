@@ -45,8 +45,14 @@ function amount(s: string, currency: Currency, label: string, min: number): numb
 
 const currency = (f: FormData, k: string): Currency => oneOf(str(f, k) || 'USD', ['USD', 'VND'], 'Currency');
 
-export const manualEtsyBlocked = (channel: string, status: string | null) =>
-  channel === 'etsy' && status === 'connected' ? 'Etsy is connected, so Etsy orders are added automatically.' : null;
+/** Etsy orders paid before the connection day are never imported, so those may be entered by hand. */
+export function manualEtsyBlocked(channel: string, status: string | null, soldOn: string | null, connectedDay: string | null): string | null {
+  if (channel !== 'etsy' || status !== 'connected') return null;
+  if (soldOn && connectedDay && soldOn < connectedDay) return null;
+  return connectedDay
+    ? `Etsy orders from ${connectedDay} on are added automatically. Only earlier Etsy orders can be entered here.`
+    : 'Etsy is connected, so Etsy orders are added automatically.';
+}
 
 export function parseSale(f: FormData) {
   return wrap(() => {

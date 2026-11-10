@@ -50,9 +50,9 @@ export function receiptToSales(receipt: EtsyReceipt, link: { bySku: Map<string, 
   return { sales, issues };
 }
 
-const FEE = ['listing', 'transaction', 'transaction_quantity', 'renew_sold', 'renew_sold_auto', 'renew_expired', 'payment_processing_fee', 'processing_fee', 'vat_seller_services'];
+const FEE = ['listing', 'transaction', 'transaction_quantity', 'renew_sold', 'renew_sold_auto', 'renew_expired', 'payment_processing_fee', 'processing_fee', 'vat_seller_services', 'shipping_transaction', 'tax_seller_services', 'buyer_fee', 'listing_refund', 'transaction_quantity_refund', 'seller_onboarding_fee'];
 const ADS = ['prolist', 'offsite_ads_fee', 'etsy_ads'];
-const IGNORE = ['payment', 'sale', 'disbursement', 'disburse', 'disburse2', 'refund', 'shipping_label', 'shipping_labels', 'sales_tax', 'tax'];
+const IGNORE = ['payment', 'sale', 'disbursement', 'disburse', 'disburse2', 'refund', 'shipping_label', 'shipping_labels', 'sales_tax', 'tax', 'payment_gross', 'seller_onboarding_fee_payment'];
 
 export function categorize(ledgerType: string): LedgerRow['category'] {
   const t = ledgerType.toLowerCase();
