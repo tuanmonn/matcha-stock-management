@@ -44,7 +44,7 @@ export default function Chart({ current, previous }: { current: DayPoint[]; prev
         ))}
       </div>
 
-      <div style={{ position: 'relative' }}>
+      <div className="chartbox" style={{ position: 'relative' }}>
         <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" tabIndex={0}
           aria-label={`${LABEL[measure]} by day, this period against the previous one`}
           onMouseMove={e => at(e.clientX, e.currentTarget.getBoundingClientRect())}

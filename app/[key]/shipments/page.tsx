@@ -21,8 +21,10 @@ export default async function ShipmentsPage({ params }: { params: Promise<{ key:
       <h2>New shipment</h2>
       <ActionForm action={saveShipmentAction.bind(null, key)} submit="Save shipment">
         <div className="row"><label>Received on<input type="date" name="received_on" defaultValue={today} required /></label></div>
-        <div className="row"><label>Freight<input name="freight" inputMode="decimal" defaultValue="0" required /></label></div>
-        <div className="row"><label>Freight currency<select name="freight_currency"><option>USD</option><option>VND</option></select></label></div>
+        <div className="cols2">
+          <div className="row"><label>Freight<input name="freight" inputMode="decimal" defaultValue="0" required /></label></div>
+          <div className="row"><label>Freight currency<select name="freight_currency"><option>USD</option><option>VND</option></select></label></div>
+        </div>
         <div className="row"><label>Note (optional)<input name="note" /></label></div>
         <p className="muted">Fill in a row for each product that came in. Rows with no units are ignored.</p>
         {products.length === 0 && <p className="error">Add products in Settings first.</p>}
@@ -31,10 +33,12 @@ export default async function ShipmentsPage({ params }: { params: Promise<{ key:
             <div className="line" key={p.id}>
               <input type="hidden" name="line_product_id[]" value={p.id} />
               <strong>{p.sku} · {p.name}</strong>
-              <label>Units<input name="line_units[]" inputMode="numeric" /></label>
-              <label>Vendor cost for the line<input name="line_vendor[]" inputMode="decimal" /></label>
-              <label>Vendor currency<select name="line_vendor_currency[]"><option>USD</option><option>VND</option></select></label>
-              <label>Expiry date<input type="date" name="line_expiry[]" /></label>
+              <div className="fields">
+                <label>Units<input name="line_units[]" inputMode="numeric" /></label>
+                <label>Vendor cost<input name="line_vendor[]" inputMode="decimal" /></label>
+                <label>Vendor currency<select name="line_vendor_currency[]"><option>USD</option><option>VND</option></select></label>
+                <label>Expiry date<input type="date" name="line_expiry[]" /></label>
+              </div>
             </div>
           ))}
         </div>
@@ -43,8 +47,8 @@ export default async function ShipmentsPage({ params }: { params: Promise<{ key:
       <h2>Past shipments</h2>
       {s.shipments.length === 0 && <p>None yet.</p>}
       {s.shipments.map(sh => (
-        <div className="card" key={sh.id} style={{ marginBottom: 8 }}>
-          <strong>{sh.received_on}</strong> · freight {money(sh.freight_amount, sh.freight_currency)}{sh.note && ` · ${sh.note}`}
+        <div className="card shipment" key={sh.id}>
+          <p className="head"><strong>{sh.received_on}</strong> · freight {money(sh.freight_amount, sh.freight_currency)}{sh.note && ` · ${sh.note}`}</p>
           <ul>
             {s.lines.filter(l => l.shipment_id === sh.id).map(l => (
               <li key={l.id}>{sku.get(l.product_id)} × {l.units}, cost {money(l.vendor_amount, l.vendor_currency)}, expires {l.expiry_date}</li>

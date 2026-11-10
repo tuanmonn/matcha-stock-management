@@ -12,7 +12,7 @@ type Listing = { listing_id: number; title: string };
 
 function ProductFields({ p, listings }: { p?: Product; listings: Listing[] | null }) {
   return (
-    <div className="lines">
+    <div className="lines pfields">
       <div className="row"><label>SKU<input name="sku" defaultValue={p?.sku} required /></label></div>
       <div className="row"><label>Name<input name="name" defaultValue={p?.name} required /></label></div>
       <div className="row"><label>Grams<input name="grams" inputMode="numeric" defaultValue={p?.grams} required /></label></div>
@@ -43,6 +43,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ key: 
     <>
       <h1>Settings</h1>
 
+      <section className="panel">
       <h2>Time zone</h2>
       <p className="muted">Days and months in reports follow this.{!s.timeZone && ' Not set yet.'}</p>
       <ActionForm action={setTimeZoneAction.bind(null, key)} submit="Save time zone">
@@ -51,37 +52,49 @@ export default async function SettingsPage({ params }: { params: Promise<{ key: 
           {US_ZONES.map(z => <option key={z} value={z}>{z}</option>)}
         </select></div>
       </ActionForm>
+      </section>
 
+      <section className="panel">
       <h2>Exchange rates</h2>
       <p className="muted">VND per USD, one rate for each year.</p>
       <ul>{years.map(y => <li key={y}>{y}: {s.rates[y].toLocaleString('en-US')} VND per USD</li>)}{years.length === 0 && <li>No rates yet.</li>}</ul>
       <ActionForm action={setRateAction.bind(null, key)} submit="Save rate">
-        <div className="row"><label>Year<input name="year" inputMode="numeric" defaultValue={new Date().getFullYear()} /></label></div>
-        <div className="row"><label>VND per USD<input name="vnd_per_usd" inputMode="decimal" placeholder="25000" /></label></div>
+        <div className="cols2">
+          <div className="row"><label>Year<input name="year" inputMode="numeric" defaultValue={new Date().getFullYear()} /></label></div>
+          <div className="row"><label>VND per USD<input name="vnd_per_usd" inputMode="decimal" placeholder="25000" /></label></div>
+        </div>
       </ActionForm>
+      </section>
 
+      <section className="panel">
       <h2>Etsy</h2>
       <p>{s.etsy.status === 'connected' ? 'Connected, read only.' : s.etsy.status === 'reconnect' ? 'Etsy access ended. Reconnect.' : 'Not connected'}</p>
       <p className="muted">The app reads sales, fees and quantities. It never changes your Etsy listings.</p>
       <form action={connectEtsyAction.bind(null, key)}>
-        <button type="submit">{s.etsy.status === 'connected' ? 'Reconnect Etsy' : s.etsy.status === 'reconnect' ? 'Reconnect' : 'Connect Etsy'}</button>
+        <button type="submit" className={s.etsy.status === 'connected' ? undefined : 'primary'}>{s.etsy.status === 'connected' ? 'Reconnect Etsy' : s.etsy.status === 'reconnect' ? 'Reconnect' : 'Connect Etsy'}</button>
       </form>
       {s.etsy.status === 'connected' && <ActionForm action={syncNowAction.bind(null, key)} submit="Sync now"><></></ActionForm>}
+      </section>
 
+      <section className="panel">
       <h2>Products</h2>
       {s.products.map(p => (
-        <details key={p.id} className="card" style={{ marginBottom: 8 }}>
+        <details key={p.id} className="sub">
           <summary style={{ minHeight: 48, display: 'flex', alignItems: 'center' }}>{p.sku} · {p.name}</summary>
           <ActionForm action={saveProductAction.bind(null, key, p.id)} submit="Save product"><ProductFields p={p} listings={listings} /></ActionForm>
         </details>
       ))}
-      <details className="card" open={s.products.length === 0}>
+      <details className="sub" open={s.products.length === 0}>
         <summary style={{ minHeight: 48, display: 'flex', alignItems: 'center' }}>Add product</summary>
         <ActionForm action={saveProductAction.bind(null, key, '')} submit="Add product"><ProductFields listings={listings} /></ActionForm>
       </details>
+      </section>
 
+      <section className="panel">
       <h2>Export</h2>
       <a className="link" href={`/${key}/export`}>Download all data (JSON)</a>
+      </section>
+
     </>
   );
 }
