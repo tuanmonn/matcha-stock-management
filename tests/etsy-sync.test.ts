@@ -14,7 +14,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
   const ts = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
   const receipt = (listing = 555, paid = '2026-11-08T10:00:00Z') => ({
     receipt_id: 900, created_timestamp: ts(paid),
-    transactions: [{ transaction_id: 7001, listing_id: listing, title: 'Matcha', quantity: 2, price: { amount: 1400, divisor: 100, currency_code: 'USD' }, paid_timestamp: ts(paid), shop_coupon: 0, buyer_coupon: 0 }],
+    transactions: [{ transaction_id: 7001, listing_id: listing, title: 'Matcha', sku: null as string | null, quantity: 2, price: { amount: 1400, divisor: 100, currency_code: 'USD' }, paid_timestamp: ts(paid), shop_coupon: 0, buyer_coupon: 0 }],
   });
   const entry = (id: number, at: string, type = 'transaction') => ({ entry_id: id, ledger_type: type, reference_type: 'transaction', reference_id: '7001', amount: -50, currency: 'USD', created_timestamp: ts(at) });
 
@@ -85,11 +85,31 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
   });
 
   test('checkMismatches resolves fixed mismatches', async () => {
-    const f = (quantity: number) => (async () => list([{ listing_id: 555, quantity, has_variations: false, title: 'Matcha' }])) as unknown as typeof fetch;
+    const f = (quantity: number) => (async () => list([{ listing_id: 555, quantity: 0, has_variations: true, title: 'Matcha', inventory: { products: [{ sku: 'M30', offerings: [{ quantity, is_enabled: true }] }] } }])) as unknown as typeof fetch;
     expect(await s.checkMismatches(f(5))).toBe(1);
-    expect((await sql`select detail, resolved_at from sync_issues where kind = 'mismatch'`)[0]).toMatchObject({ detail: 'M30: Etsy 5, app 10', resolved_at: null });
+    expect((await sql`select detail, resolved_at from sync_issues where kind = 'mismatch'`)[0]).toMatchObject({ detail: 'M30: Etsy 5 in "Matcha", app 10', resolved_at: null });
     expect(await s.checkMismatches(f(10))).toBe(0);
     expect((await sql`select resolved_at from sync_issues where kind = 'mismatch'`)[0].resolved_at).not.toBeNull();
+  });
+
+  test('listActiveListings asks Etsy for inventory', async () => {
+    const urls: string[] = [];
+    await s.listActiveListings((async (url: string) => { urls.push(url); return list([]); }) as unknown as typeof fetch);
+    expect(new URL(urls[0]).searchParams.get('includes')).toBe('Inventory');
+  });
+
+  test('importReceipt books by SKU even when the listing is shared', async () => {
+    const p2 = await d.saveProduct({ sku: 'M60', name: 'Matcha 60g', grams: 60, packaging: 'bag', store_price: 2400, details: '', etsy_listing_id: '555', low_stock_at: 3 });
+    const r = receipt(); r.transactions[0].sku = 'M60';
+    expect(await s.importReceipt(r)).toBe(1);
+    expect((await sql`select product_id from sales where channel = 'etsy'`)[0].product_id).toBe(p2);
+  });
+
+  test('importLedger leaves a fee on a shared listing at shop level', async () => {
+    await d.saveProduct({ sku: 'M60', name: 'Matcha 60g', grams: 60, packaging: 'bag', store_price: 2400, details: '', etsy_listing_id: '555', low_stock_at: 3 });
+    const f = (async () => list([{ ...entry(1, '2026-11-08T11:00:00Z', 'listing'), reference_type: 'listing', reference_id: '555' }])) as unknown as typeof fetch;
+    await s.importLedger(now, f);
+    expect((await sql`select product_id from etsy_ledger`)[0].product_id).toBeNull();
   });
 
   test('catchUp pulls paid receipts from the window and imports them', async () => {
@@ -106,14 +126,14 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
       const path = new URL(url).pathname;
       if (path.endsWith('/receipts')) return json(500, {});
       if (path.endsWith('/ledger-entries')) return list([entry(1, '2026-11-08T11:00:00Z')]);
-      return list([{ listing_id: 555, quantity: 10, has_variations: false, title: 'Matcha' }]);
+      return list([{ listing_id: 555, quantity: 0, has_variations: true, title: 'Matcha', inventory: { products: [{ sku: 'M30', offerings: [{ quantity: 10, is_enabled: true }] }] } }]);
     }) as unknown as typeof fetch;
     const lines = await s.runDaily(now, f);
     expect(lines).toHaveLength(4);
     expect(lines[1]).toBe('catchUp: Etsy 500 on /shops/123/receipts. It will retry tomorrow, or press Sync now in Settings.');
     expect(await sql`select 1 from etsy_ledger`).toHaveLength(1);
     expect(await sql`select 1 from sync_issues where kind = 'etsy_error' and ref = 'catchUp' and resolved_at is null`).toHaveLength(1);
-    const ok = (async (url: string) => (new URL(url).pathname.endsWith('/listings') ? list([{ listing_id: 555, quantity: 10, has_variations: false, title: 'Matcha' }]) : list([]))) as unknown as typeof fetch;
+    const ok = (async (url: string) => (new URL(url).pathname.endsWith('/listings') ? list([{ listing_id: 555, quantity: 0, has_variations: true, title: 'Matcha', inventory: { products: [{ sku: 'M30', offerings: [{ quantity: 10, is_enabled: true }] }] } }]) : list([]))) as unknown as typeof fetch;
     await s.runDaily(now, ok);
     expect(await sql`select 1 from sync_issues where kind = 'etsy_error' and resolved_at is null`).toHaveLength(0);
   });

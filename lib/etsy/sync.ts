@@ -21,14 +21,20 @@ async function pages<T>(path: string, query: Record<string, string | number | bo
   }
 }
 
+// A listing maps to a product only when exactly one product is linked to it.
+const soleListings = (products: { id: string; etsy_listing_id: string | null }[]) => {
+  const linked = products.filter((p) => p.etsy_listing_id);
+  return new Map<string, string>(linked.filter((p) => linked.filter((q) => q.etsy_listing_id === p.etsy_listing_id).length === 1).map((p) => [p.etsy_listing_id!, p.id]));
+};
+
 const upsertIssue = (i: IssueRow) =>
   sql`insert into sync_issues (kind, ref, detail) values (${i.kind}, ${i.ref}, ${i.detail}) on conflict (kind, ref) do nothing`;
 
 export async function importReceipt(receipt: EtsyReceipt): Promise<number> {
   const s = await settings();
-  const products = await sql`select id, etsy_listing_id from products where etsy_listing_id is not null`;
-  const byListing = new Map<string, string>(products.map((p) => [p.etsy_listing_id, p.id]));
-  const { sales, issues } = receiptToSales(receipt, byListing, new Date(s.etsy_connected_at!));
+  const products = (await sql`select id, sku, etsy_listing_id from products`) as { id: string; sku: string; etsy_listing_id: string | null }[];
+  const bySku = new Map<string, string>(products.map((p) => [p.sku, p.id]));
+  const { sales, issues } = receiptToSales(receipt, { bySku, byListing: soleListings(products) }, new Date(s.etsy_connected_at!));
   const res = await sql.transaction([
     ...sales.flatMap((x) => [
       sql`insert into sales (id, channel, sold_at, product_id, qty, unit_price, currency, etsy_receipt_id, etsy_transaction_id, discount)
@@ -68,7 +74,7 @@ export async function importLedger(now: Date, f: typeof fetch = fetch): Promise<
   const byTransaction = new Map<string, string>(sales.map((x) => [x.etsy_transaction_id, x.product_id]));
   const byReceipt = new Map<string, string[]>();
   for (const x of sales) byReceipt.set(x.etsy_receipt_id, [...(byReceipt.get(x.etsy_receipt_id) ?? []), x.product_id]);
-  const byListing = new Map<string, string>((await sql`select id, etsy_listing_id from products where etsy_listing_id is not null`).map((p) => [p.etsy_listing_id, p.id]));
+  const byListing = soleListings((await sql`select id, etsy_listing_id from products`) as { id: string; etsy_listing_id: string | null }[]);
 
   let added = 0;
   const otherCurrencies = new Set<string>();
@@ -98,7 +104,7 @@ export async function importLedger(now: Date, f: typeof fetch = fetch): Promise<
 }
 
 export async function listActiveListings(f: typeof fetch = fetch): Promise<EtsyListing[]> {
-  const r = await etsyGet<{ results: EtsyListing[] }>(`/shops/${(await settings()).etsy_shop_id}/listings`, { state: 'active', limit: 100 }, f);
+  const r = await etsyGet<{ results: EtsyListing[] }>(`/shops/${(await settings()).etsy_shop_id}/listings`, { state: 'active', limit: 100, includes: 'Inventory' }, f);
   return r.results;
 }
 

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { LedgerRow, Currency } from '@/lib/types';
 
 export type EtsyTransaction = {
-  transaction_id: number; listing_id: number; title: string; quantity: number;
+  transaction_id: number; listing_id: number; title: string; sku: string | null; quantity: number;
   price: { amount: number; divisor: number; currency_code: string };
   paid_timestamp: number | null; shop_coupon: number; buyer_coupon: number;
 };
@@ -11,7 +11,9 @@ export type EtsyLedgerEntry = {
   entry_id: number; ledger_type: string; reference_type: string; reference_id: string;
   amount: number; currency: string; created_timestamp: number;
 };
-export type EtsyListing = { listing_id: number; quantity: number; has_variations: boolean; title: string; state?: string };
+export type EtsyListing = { listing_id: number; quantity: number; has_variations: boolean; title: string; state?: string;
+  inventory?: { products: { sku: string | null; is_deleted?: boolean; offerings: { quantity: number; is_enabled?: boolean; is_deleted?: boolean }[] }[] };
+};
 
 export type EtsySaleRow = {
   id: string; product_id: string; sold_at: string; qty: number; unit_price: number; discount: number;
@@ -24,16 +26,16 @@ export function saleIdFor(transactionId: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
-export function receiptToSales(receipt: EtsyReceipt, productByListing: Map<string, string>, connectedAt: Date) {
+export function receiptToSales(receipt: EtsyReceipt, link: { bySku: Map<string, string>; byListing: Map<string, string> }, connectedAt: Date) {
   const sales: EtsySaleRow[] = [];
   const issues: IssueRow[] = [];
   for (const t of receipt.transactions) {
     const paid = (t.paid_timestamp ?? receipt.created_timestamp) * 1000;
     if (paid < connectedAt.getTime()) continue;
     const id = String(t.transaction_id);
-    const product_id = productByListing.get(String(t.listing_id));
+    const product_id = link.bySku.get((t.sku ?? '').trim()) ?? link.byListing.get(String(t.listing_id));
     if (!product_id) {
-      issues.push({ kind: 'unknown_listing', ref: id, detail: `Etsy listing ${t.listing_id} (${t.title}) isn't linked to a product. Link it in Settings.` });
+      issues.push({ kind: 'unknown_listing', ref: id, detail: `Etsy order for "${t.title}" (SKU "${t.sku?.trim() || 'none'}") doesn't match a product. Give the Etsy option the same SKU as the app.` });
     } else if (t.price.currency_code !== 'USD') {
       issues.push({ kind: 'etsy_error', ref: `currency:${id}`, detail: `Transaction ${id} is priced in ${t.price.currency_code}; only USD is supported.` });
     } else {
@@ -79,30 +81,26 @@ export function ledgerToRow(
 
 export function mismatches(
   products: { id: string; sku: string; etsy_listing_id: string | null; stock: number }[],
-  listings: { listing_id: number; quantity: number; has_variations: boolean; title: string }[],
+  listings: EtsyListing[],
 ): IssueRow[] {
-  const byId = new Map(listings.map((l) => [String(l.listing_id), l]));
-  const linked = products.filter((p) => p.etsy_listing_id);
+  const bySku = new Map<string, { title: string; qty: number }[]>();
+  for (const l of listings) {
+    for (const o of l.inventory?.products ?? []) {
+      if (o.is_deleted || !o.sku?.trim()) continue;
+      const qty = o.offerings.filter((x) => x.is_enabled && !x.is_deleted).reduce((n, x) => n + x.quantity, 0);
+      const k = o.sku.trim();
+      bySku.set(k, [...(bySku.get(k) ?? []), { title: l.title, qty }]);
+    }
+  }
   const out: IssueRow[] = [];
-  const shared = new Set<string>();
-  for (const p of linked) {
-    const lid = p.etsy_listing_id!;
-    const sharing = linked.filter((q) => q.etsy_listing_id === lid);
-    if (sharing.length > 1) {
-      if (!shared.has(lid)) {
-        shared.add(lid);
-        out.push({ kind: 'mismatch', ref: p.id, detail: `${sharing.map((q) => q.sku).join(', ')} share Etsy listing ${lid}` });
-      }
+  for (const p of products) {
+    const entries = bySku.get(p.sku);
+    if (!entries) {
+      if (p.etsy_listing_id) out.push({ kind: 'mismatch', ref: p.id, detail: `${p.sku}: no active Etsy listing option has this SKU` });
       continue;
     }
-    const l = byId.get(lid);
-    if (!l) {
-      if (p.stock > 0) out.push({ kind: 'mismatch', ref: p.id, detail: `${p.sku}: listing isn't active on Etsy, app has ${p.stock}` });
-    } else if (l.has_variations) {
-      out.push({ kind: 'mismatch', ref: p.id, detail: `${p.sku}: Etsy listing has variations; the check can't compare it` });
-    } else if (l.quantity !== p.stock) {
-      out.push({ kind: 'mismatch', ref: p.id, detail: `${p.sku}: Etsy ${l.quantity}, app ${p.stock}` });
-    }
+    const bad = entries.filter((e) => e.qty !== p.stock);
+    if (bad.length) out.push({ kind: 'mismatch', ref: p.id, detail: bad.map((e) => `${p.sku}: Etsy ${e.qty} in "${e.title}", app ${p.stock}`).join('; ') });
   }
   return out;
 }
