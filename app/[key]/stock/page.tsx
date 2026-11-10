@@ -21,11 +21,12 @@ export default async function StockPage({ params }: { params: Promise<{ key: str
       <h1>Stock</h1>
       {d.status !== 'ok' && <p className="warn">Average cost needs the time zone and exchange rates in Settings.</p>}
 
+      <div className="stockgrid">
       {s.products.map(p => {
         const moves = s.moves.filter(m => m.product_id === p.id);
         const expiries = s.expiry.filter(e => e.product_id === p.id && !e.cleared_at);
         return (
-          <section className="card" key={p.id} style={{ marginBottom: 12 }}>
+          <section className="card" key={p.id}>
             <h2 style={{ marginTop: 0 }}>{p.sku} · {p.name}</h2>
             <p>
               <strong>{stockOf(s.moves, p.id)}</strong> in stock
@@ -34,7 +35,7 @@ export default async function StockPage({ params }: { params: Promise<{ key: str
             <p className="muted">Expiry dates on hand:</p>
             {expiries.length === 0 && <p>None.</p>}
             {expiries.map(e => (
-              <div key={e.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div key={e.id} className="expiry">
                 <span>{e.expiry_date}</span>
                 <form action={clearExpiryAction.bind(null, key, e.id)}><button type="submit">Clear</button></form>
               </div>
@@ -42,15 +43,16 @@ export default async function StockPage({ params }: { params: Promise<{ key: str
             <details>
               <summary style={{ minHeight: 48, display: 'flex', alignItems: 'center' }}>History ({moves.length})</summary>
               <div className="tablewrap"><table>
-                <thead><tr><th>Day</th><th>Kind</th><th>Change</th><th>Reason</th></tr></thead>
+                <thead><tr><th>Day</th><th>Kind</th><th className="n">Change</th><th>Reason</th></tr></thead>
                 <tbody>{moves.map(m => (
-                  <tr key={m.id}><td>{dayKey(m.at, tz)}</td><td>{m.kind}</td><td>{m.qty_delta > 0 ? `+${m.qty_delta}` : m.qty_delta}</td><td>{m.reason}</td></tr>
+                  <tr key={m.id}><td>{dayKey(m.at, tz)}</td><td>{m.kind}</td><td className="n">{m.qty_delta > 0 ? `+${m.qty_delta}` : m.qty_delta}</td><td>{m.reason}</td></tr>
                 ))}</tbody>
               </table></div>
             </details>
           </section>
         );
       })}
+      </div>
 
       <h2>Correct a count</h2>
       <ActionForm action={saveCorrectionAction.bind(null, key)} submit="Save correction">

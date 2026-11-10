@@ -12,7 +12,7 @@ export function ActionForm({ action, submit, children, className }: {
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state?.saved) ref.current?.reset(); }, [state]);
   return (
-    <form ref={ref} className={className} onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); startTransition(() => run(f)); }}>
+    <form ref={ref} className={`act ${className ?? ''}`.trim()} onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); startTransition(() => run(f)); }}>
       {children}
       {state?.error && <p role="alert" className="error">{state.error}</p>}
       {state?.saved && <p role="status" className="ok">{state.saved}</p>}
