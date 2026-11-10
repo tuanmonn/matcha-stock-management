@@ -3,11 +3,11 @@ import { saleIdFor, receiptToSales, categorize, ledgerToRow, mismatches, type Et
 
 const T0 = 1_700_000_000;
 const tx = (o: Partial<EtsyReceipt['transactions'][0]> = {}) => ({
-  transaction_id: 11, listing_id: 5, title: 'Matcha', quantity: 2,
+  transaction_id: 11, listing_id: 5, title: 'Matcha', sku: null as string | null, quantity: 2,
   price: { amount: 2400, divisor: 100, currency_code: 'USD' }, paid_timestamp: T0, shop_coupon: 0, buyer_coupon: 0, ...o,
 });
 const receipt = (t = [tx()]): EtsyReceipt => ({ receipt_id: 9, created_timestamp: T0 - 10, transactions: t });
-const map = new Map([['5', 'p1']]);
+const map = { bySku: new Map<string, string>(), byListing: new Map([['5', 'p1']]) };
 const before = new Date((T0 - 100) * 1000);
 
 describe('receiptToSales', () => {
@@ -27,9 +27,26 @@ describe('receiptToSales', () => {
     expect(r).toEqual({ sales: [], issues: [] });
   });
   it('unknown listing becomes an issue and no sale', () => {
-    const r = receiptToSales(receipt(), new Map(), before);
+    const r = receiptToSales(receipt(), { bySku: new Map(), byListing: new Map() }, before);
     expect(r.sales).toEqual([]);
-    expect(r.issues).toEqual([{ kind: 'unknown_listing', ref: '11', detail: "Etsy listing 5 (Matcha) isn't linked to a product. Link it in Settings." }]);
+    expect(r.issues).toEqual([{ kind: 'unknown_listing', ref: '11', detail: 'Etsy order for "Matcha" (SKU "none") doesn\'t match a product. Give the Etsy option the same SKU as the app.' }]);
+  });
+  const skus = { bySku: new Map([['A20', 'pa'], ['A40', 'pb']]), byListing: new Map([['5', 'p1']]) };
+  it('matches by SKU before listing', () => {
+    const r = receiptToSales(receipt([tx({ sku: ' A40 ' })]), skus, before);
+    expect(r.sales[0].product_id).toBe('pb');
+  });
+  it('two SKUs in one listing book to the right products', () => {
+    const r = receiptToSales(receipt([tx({ sku: 'A20' }), tx({ transaction_id: 12, sku: 'A40' })]), { ...skus, byListing: new Map() }, before);
+    expect(r.sales.map((x) => x.product_id)).toEqual(['pa', 'pb']);
+  });
+  it('falls back to a listing linked to exactly one product', () => {
+    expect(receiptToSales(receipt([tx({ sku: 'NOPE' })]), skus, before).sales[0].product_id).toBe('p1');
+  });
+  it('unknown SKU on a shared listing is an issue', () => {
+    const r = receiptToSales(receipt([tx({ sku: 'NOPE' })]), { ...skus, byListing: new Map() }, before);
+    expect(r.sales).toEqual([]);
+    expect(r.issues[0]).toMatchObject({ kind: 'unknown_listing', ref: '11', detail: 'Etsy order for "Matcha" (SKU "NOPE") doesn\'t match a product. Give the Etsy option the same SKU as the app.' });
   });
   it('non-USD becomes an etsy_error issue', () => {
     const r = receiptToSales(receipt([tx({ price: { amount: 1, divisor: 1, currency_code: 'EUR' } })]), map, before);
@@ -72,19 +89,28 @@ describe('ledgerToRow', () => {
   });
 });
 
-it('mismatch cases', () => {
-  const p = (id: string, listing: string | null, stock: number) => ({ id, sku: id.toUpperCase(), etsy_listing_id: listing, stock });
-  const l = (id: number, quantity: number, has_variations = false) => ({ listing_id: id, quantity, has_variations, title: 't' });
-  const out = mismatches(
-    [p('a', null, 1), p('b', '1', 3), p('c', '2', 4), p('d', '3', 2), p('e', '3', 2), p('f', '4', 5), p('g', '5', 5)],
-    [l(2, 4, true), l(3, 2), l(4, 9), l(5, 5)],
-  );
-  expect(out.every((i) => i.kind === 'mismatch')).toBe(true);
-  expect(out.map((i) => [i.ref, i.detail])).toEqual([
-    ['b', "B: listing isn't active on Etsy, app has 3"],
-    ['c', "C: Etsy listing has variations; the check can't compare it"],
-    ['d', 'D, E share Etsy listing 3'],
-    ['f', 'F: Etsy 9, app 5'],
-  ]);
-  expect(mismatches([p('x', '9', 0)], [])).toEqual([]);
+describe('mismatches', () => {
+  const p = (sku: string, listing: string | null, stock: number) => ({ id: sku.toLowerCase(), sku, etsy_listing_id: listing, stock });
+  const opt = (sku: string | null, quantity: number, extra: { is_deleted?: boolean } = {}) => ({ sku, ...extra, offerings: [{ quantity, is_enabled: true }] });
+  const l = (id: number, title: string, products: ReturnType<typeof opt>[]) => ({ listing_id: id, quantity: 0, has_variations: true, title, inventory: { products } });
+
+  it('mismatch compares each listing option with its SKU across listings', () => {
+    const out = mismatches([p('A20', '1', 5), p('A40', null, 3)], [
+      l(1, 'Single', [opt('A20', 4), opt('A40', 3)]),
+      l(2, 'Set', [opt(' A20 ', 7), opt('A40', 3, { is_deleted: true })]),
+    ]);
+    expect(out).toEqual([{ kind: 'mismatch', ref: 'a20', detail: 'A20: Etsy 4 in "Single", app 5; A20: Etsy 7 in "Set", app 5' }]);
+  });
+  it('no issue when every option matches', () => {
+    expect(mismatches([p('A20', null, 5)], [l(1, 'Single', [opt('A20', 5)]), l(2, 'Set', [opt('A20', 5)])])).toEqual([]);
+  });
+  it('sums only enabled, non-deleted offerings', () => {
+    const o = { sku: 'A20', offerings: [{ quantity: 2, is_enabled: true }, { quantity: 9, is_enabled: false }, { quantity: 9, is_deleted: true, is_enabled: true }] };
+    expect(mismatches([p('A20', null, 2)], [l(1, 'S', [o])])).toEqual([]);
+  });
+  it('flags a linked product whose SKU no listing carries', () => {
+    expect(mismatches([p('A20', '1', 0), p('A40', null, 3)], [l(1, 'Single', [opt('ZZ', 1)])])).toEqual([
+      { kind: 'mismatch', ref: 'a20', detail: 'A20: no active Etsy listing option has this SKU' },
+    ]);
+  });
 });

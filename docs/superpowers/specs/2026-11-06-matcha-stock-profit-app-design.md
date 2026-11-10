@@ -169,7 +169,7 @@ Phase 1 doesn't depend on Etsy approval. Phase 2 needs your API key. Pushing qua
 | Item | Default until confirmed | Confirmed in |
 | --- | --- | --- |
 | Store's state, which sets the time zone | Ask before phase 1 ships | Phase 1 |
-| Each SKU is one Etsy listing without variations | The mismatch check reads every product in the listing | Phase 2 |
+| Each SKU is one Etsy listing without variations | Wrong for this shop (options, and one SKU in several listings): matched by Etsy option SKU instead, which must equal the app SKU | Phase 2, 10 November 2026 |
 | Receipt fields for item price and discounts | Price × quantity minus discount | Phase 2 |
 | Real `ledger_type` names | Unknown types show as uncategorized | Phase 2 |
 | Neon free-plan terms: no business-use ban found, but the governing [Databricks agreement](https://www.databricks.com/legal/mcsa) wasn't read | Proceed, and keep export available | You, any time |

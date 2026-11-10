@@ -26,7 +26,8 @@ function ProductFields({ p, listings }: { p?: Product; listings: Listing[] | nul
           {p?.etsy_listing_id && !listings.some(l => String(l.listing_id) === p.etsy_listing_id) && <option value={p.etsy_listing_id}>{p.etsy_listing_id}</option>}
           {listings.map(l => <option key={l.listing_id} value={String(l.listing_id)}>{l.title} ({l.listing_id})</option>)}
         </select>
-      ) : <input name="etsy_listing_id" defaultValue={p?.etsy_listing_id ?? ''} />}</label></div>
+      ) : <input name="etsy_listing_id" defaultValue={p?.etsy_listing_id ?? ''} />}</label>
+        <p className="muted">Optional. Etsy orders are matched by SKU; this is only used when an Etsy option has no SKU.</p></div>
       <div className="row"><label>Details (optional)<input name="details" defaultValue={p?.details} /></label></div>
     </div>
   );
