@@ -21,3 +21,5 @@ test('todayKey uses the store time zone, UTC when unset', () => {
   expect(todayKey(now, 'America/New_York')).toBe('2026-11-05');
   expect(todayKey(now, null)).toBe('2026-11-06');
 });
+test('all time runs from the first activity with no previous window', () => expect(rangeWindows({ kind: 'all' }, '2026-11-10', '2026-09-24')).toEqual({ current: { from: '2026-09-24', to: '2026-11-10' }, previous: null }));
+test('all time with no activity is just today', () => expect(rangeWindows({ kind: 'all' }, '2026-11-10', null).current).toEqual({ from: '2026-11-10', to: '2026-11-10' }));

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { summarize, dailySeries, historyLines, type SaleLine } from '@/lib/profit';
+import { summarize, dailySeries, monthlySeries, historyLines, type SaleLine } from '@/lib/profit';
 import type { HistoryRow } from '@/lib/types';
 
 const w = { from: '2026-11-01', to: '2026-11-30' };
@@ -25,4 +25,8 @@ test('history rows use current average cost and their own order count', () => {
 test('fees with a product count against that sku and etsy only', () => {
   const out = summarize([sale({ channel: 'etsy' })], [{ day: '2026-11-05', amount: 500, kind: 'fee', productId: 'p1' }], w);
   expect(out.bySku.p1.profit).toBe(2500); expect(out.byChannel.etsy.profit).toBe(2500); expect(out.byChannel.store.profit).toBe(0);
+});
+test('monthly series has a bar per month, window-clipped', () => {
+  const m = monthlySeries([sale({ day: '2026-10-20' }), sale({ orderId: 'o2', day: '2026-11-02' }), sale({ orderId: 'o3', day: '2026-09-01' })], [{ day: '2026-11-03', amount: 1000, kind: 'expense' }], { from: '2026-10-15', to: '2026-11-10' });
+  expect(m.map(p => [p.day, p.profit])).toEqual([['2026-10-01', 3000], ['2026-11-01', 2000]]);
 });

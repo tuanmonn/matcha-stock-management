@@ -69,3 +69,4 @@ describe('manualEtsyBlocked', () => {
     expect(manualEtsyBlocked('etsy', 'connected', '2026-11-04', null)).toBe('Etsy is connected, so Etsy orders are added automatically.'));
   it('always allows the store channel', () => expect(manualEtsyBlocked('store', 'connected', '2026-11-06', '2026-11-05')).toBeNull());
 });
+test('all time parsed', () => expect(parseRange({ range: 'all' })).toEqual({ kind: 'all' }));

@@ -73,3 +73,26 @@ test('uncategorized ledger total is reported and not counted in profit', () => {
   expect(d.uncategorizedFeesCents).toBe(450);
   expect(d.current.shop.profit).toBe(7600);
 });
+
+const all = { kind: 'all' as const };
+test('lifetime starts at an early ledger fee, before the first sale', () => {
+  const d = buildDashboard({ ...snap, ledger: [{ ...led('early', 'fee', -300), at: '2026-09-24T15:00:00Z' }] }, now, all) as any;
+  expect(d.lifetime).toMatchObject({ since: '2026-09-24', shop: { revenue: 20000, fees: 300, profit: 20000 - 4800 - 300 } });
+  expect(d.windows).toEqual({ current: { from: '2026-09-24', to: '2026-11-10' }, previous: null });
+  expect(d.previous).toBeNull();
+  expect(d.series.previous).toEqual([]);
+});
+test('lifetime includes history months and expenses, and is approximate', () => {
+  const d = buildDashboard({ ...snap, history: [hist('2026-08-01', 4, 20000, 3)], expenses: [exp] }, now, month) as any;
+  expect(d.lifetime).toMatchObject({ since: '2026-08-01', approximate: true, shop: { revenue: 20000 + 10000 + 10000, expenses: 1000, orders: 3 + 1 + 1 } });
+});
+test('no activity gives no lifetime', () => expect((buildDashboard({ ...snap, sales: [], moves: [] }, now, all) as any).lifetime).toBeNull());
+test('all time buckets by month, history month included', () => {
+  const d = buildDashboard({ ...snap, history: [hist('2026-09-01', 4, 20000, 3)] }, now, all) as any;
+  expect(d.series.bucket).toBe('month');
+  expect(d.series.current.map((p: any) => [p.day, p.revenue])).toEqual([['2026-09-01', 20000], ['2026-10-01', 10000], ['2026-11-01', 10000]]);
+});
+test('month and week stay daily, long custom ranges go monthly', () => {
+  expect((buildDashboard(snap, now, month) as any).series.bucket).toBe('day');
+  expect((buildDashboard(snap, now, { kind: 'custom', from: '2026-08-01', to: '2026-11-10' }) as any).series.bucket).toBe('month');
+});

@@ -1,5 +1,5 @@
 export type Window = { from: string; to: string };
-export type Range = { kind: 'week' } | { kind: 'month' } | { kind: 'custom'; from: string; to: string };
+export type Range = { kind: 'week' } | { kind: 'month' } | { kind: 'all' } | { kind: 'custom'; from: string; to: string };
 
 const DAY_MS = 86_400_000;
 const ms = (day: string): number => { const [y, m, d] = day.split('-').map(Number); return Date.UTC(y, m - 1, d); };
@@ -28,7 +28,9 @@ export function monthWindows(today: string): { current: Window; previous: Window
 
 export const inWindow = (day: string, w: Window): boolean => day >= w.from && day <= w.to;
 
-export function rangeWindows(r: Range, today: string): { current: Window; previous: Window } {
+// `since` is the first day with any activity; All time has no previous window.
+export function rangeWindows(r: Range, today: string, since?: string | null): { current: Window; previous: Window | null } {
+  if (r.kind === 'all') return { current: { from: since ?? today, to: today }, previous: null };
   if (r.kind === 'month') return monthWindows(today);
   if (r.kind === 'week') {
     const sinceMonday = (new Date(ms(today)).getUTCDay() + 6) % 7;
