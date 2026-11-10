@@ -114,3 +114,6 @@ describe('mismatches', () => {
     ]);
   });
 });
+
+it.each(['shipping_transaction', 'tax_seller_services', 'buyer_fee', 'listing_refund', 'transaction_quantity_refund', 'seller_onboarding_fee'])('categorize treats %s as a fee', t => expect(categorize(t)).toBe('fee'));
+it.each(['payment_gross', 'seller_onboarding_fee_payment'])('categorize ignores %s', t => expect(categorize(t)).toBe('ignore'));

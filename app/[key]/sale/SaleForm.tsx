@@ -6,7 +6,7 @@ export type SaleProduct = { id: string; name: string; grams: number; stock: numb
 
 const price = (cents: number) => (cents / 100).toFixed(2);
 
-export default function SaleForm({ keyValue, products, firstId, today, etsyConnected }: { keyValue: string; products: SaleProduct[]; firstId: string; today: string; etsyConnected: boolean }) {
+export default function SaleForm({ keyValue, products, firstId, today, etsyConnected, connectedDay }: { keyValue: string; products: SaleProduct[]; firstId: string; today: string; etsyConnected: boolean; connectedDay: string | null }) {
   const [state, run, pending] = useActionState(recordSale.bind(null, keyValue), null);
   // The sale id is made on the server at render so a double-tap sends the same id twice; every reply issues a fresh one.
   const [id, setId] = useState(firstId);
@@ -54,7 +54,7 @@ export default function SaleForm({ keyValue, products, firstId, today, etsyConne
         <legend>Channel</legend>
         <div className="choices">
           <label className="choice"><input type="radio" name="channel" value="store" defaultChecked /> Store</label>
-          {!etsyConnected && <label className="choice"><input type="radio" name="channel" value="etsy" /> Etsy</label>}
+          <label className="choice"><input type="radio" name="channel" value="etsy" /> {etsyConnected && connectedDay ? `Etsy (orders before ${Number(connectedDay.slice(5, 7))}/${Number(connectedDay.slice(8))})` : 'Etsy'}</label>
         </div>
       </fieldset>
 
