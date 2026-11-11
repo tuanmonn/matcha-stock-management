@@ -1,1 +1,1 @@
-{ "crons": [{ "path": "/etsy/daily", "schedule": "0 12 * * *" }] }
+{ "regions": ["sin1"], "crons": [{ "path": "/etsy/daily", "schedule": "0 12 * * *" }] }

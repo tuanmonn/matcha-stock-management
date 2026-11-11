@@ -7,8 +7,8 @@ This is how the live app is set up and run, and the lessons learned building it.
 | Thing | Value |
 | --- | --- |
 | Site | `https://lemon-umai-inventory.vercel.app/<APP_KEY>/…`, where any other path returns 404 |
-| Vercel | Project **`lemon-ui-inventory`** (renamed; the address didn't change). Hobby plan. Every push to `main` deploys production |
-| Database | Neon project `sparkling-unit-58053494` (org `org-tiny-snow-13030902`). Branch `production` is live; branch `test` is used only by tests |
+| Vercel | Project **`lemon-ui-inventory`** (renamed; the address didn't change). Hobby plan. Every push to `main` deploys production. Functions run in `sin1` (Singapore, `vercel.json`) to sit next to the database; in `iad1` each page waited ~0.45 s extra on cross-Pacific queries |
+| Database | Neon project `sparkling-unit-58053494` (org `org-tiny-snow-13030902`). Region `ap-southeast-1` (Singapore). Branch `production` is live; branch `test` is used only by tests |
 | GitHub | `tuanmonn/matcha-stock-management`. PRs #1–#4 are merged (phase 1, phase 2, SKU matching, fee map) |
 | Store | The friend's store is in Texas, so `settings.time_zone = America/Chicago` |
 | Etsy shop | LemonUmaiMatcha. Read-only app, connected |
