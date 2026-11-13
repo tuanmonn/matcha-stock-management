@@ -84,3 +84,26 @@ test('freight payer defaults to the matcha payer and can differ', () => {
   expect(parseShipment(fd({ ...base, paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'ngoc', freight_paid_by: 'ngoc' } });
   expect(parseShipment(fd({ ...base, paid_by: 'my', freight_paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'my', freight_paid_by: 'ngoc' } });
 });
+
+test('comma as decimal point in USD', () => {
+  const price = (v: string) => parseSale(fd({ id: uuid, channel: 'store', product_id: 'p1', qty: '1', price: v }));
+  expect(price('12,50')).toMatchObject({ value: { unit_price: 1250 } });
+  expect(price('12,5')).toMatchObject({ value: { unit_price: 1250 } });
+  expect(price('1,250.50')).toMatchObject({ value: { unit_price: 125050 } });
+  expect(price('1,250')).toMatchObject({ value: { unit_price: 125000 } });
+  expect(price('12.50')).toMatchObject({ value: { unit_price: 1250 } });
+  expect(price('12,5055').ok).toBe(false);
+});
+test('dots and commas group thousands in VND', () => {
+  const vnd = (v: string) => parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: v, currency: 'VND' }));
+  expect(vnd('1.250.000')).toMatchObject({ value: { amount: 1250000 } });
+  expect(vnd('1,250,000')).toMatchObject({ value: { amount: 1250000 } });
+  expect(vnd('10,5').ok).toBe(false);
+});
+test('rate accepts either separator', () => {
+  const rate = (v: string) => parseRate(fd({ year: '2026', vnd_per_usd: v }));
+  expect(rate('25.500')).toMatchObject({ value: { vnd_per_usd: 25500 } });
+  expect(rate('25,500')).toMatchObject({ value: { vnd_per_usd: 25500 } });
+  expect(rate('25500')).toMatchObject({ value: { vnd_per_usd: 25500 } });
+});
+test('instagram is a valid channel', () => expect(parseSale(fd({ id: uuid, channel: 'instagram', product_id: 'p1', qty: '1', price: '5' })).ok).toBe(true));

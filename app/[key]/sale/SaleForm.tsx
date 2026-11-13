@@ -54,6 +54,7 @@ export default function SaleForm({ keyValue, products, firstId, today, etsyConne
         <legend>Channel</legend>
         <div className="choices">
           <label className="choice"><input type="radio" name="channel" value="store" defaultChecked /> Store</label>
+          <label className="choice"><input type="radio" name="channel" value="instagram" /> Instagram</label>
           <label className="choice"><input type="radio" name="channel" value="etsy" /> {etsyConnected && connectedDay ? `Etsy (orders before ${Number(connectedDay.slice(5, 7))}/${Number(connectedDay.slice(8))})` : 'Etsy'}</label>
         </div>
       </fieldset>

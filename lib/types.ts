@@ -1,3 +1,4 @@
+export type Channel = 'etsy' | 'store' | 'instagram';
 export type Currency = 'USD' | 'VND';
 /** year -> VND per USD */
 export type Rates = Record<number, number>;
@@ -14,7 +15,7 @@ export type ShipmentLine = {
   vendor_amount: number; vendor_currency: Currency; expiry_date: string;
 };
 export type Sale = {
-  id: string; channel: 'etsy' | 'store'; sold_at: string; product_id: string; qty: number;
+  id: string; channel: Channel; sold_at: string; product_id: string; qty: number;
   unit_price: number; discount: number; currency: Currency; etsy_receipt_id: string | null; etsy_transaction_id: string | null;
 };
 export type StockMove = {
@@ -23,7 +24,7 @@ export type StockMove = {
 };
 export type Expense = { id: string; paid_by: Payer; spent_on: string; category: 'packaging' | 'gift'; amount: number; currency: Currency; note: string };
 export type HistoryRow = {
-  id: string; month: string; product_id: string; channel: 'etsy' | 'store'; units: number;
+  id: string; month: string; product_id: string; channel: Channel; units: number;
   revenue: number; currency: Currency; orders: number;
 };
 export type ExpiryDate = { id: string; product_id: string; expiry_date: string; cleared_at: string | null };
