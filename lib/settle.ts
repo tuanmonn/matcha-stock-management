@@ -1,10 +1,10 @@
-import { toUsdCents } from './money';
+import { toUsdCents, usdCentsToVnd } from './money';
 import type { Snapshot } from './data';
 
 const yearOf = (day: string): number => Number(day.slice(0, 4));
 
-/** USD cents. Cash view: every dollar paid for stock counts when paid, not when sold. Throws MissingRateError like the dashboard. */
-export function settle(s: Snapshot, tz: string) {
+/** USD cents, except transfers (VND) and ngocOwesVnd, which converts what My is owed at `year`'s rate. Cash view: every dollar paid for stock counts when paid, not when sold. Throws MissingRateError like the dashboard. */
+export function settle(s: Snapshot, tz: string, year: number) {
   const usd = (n: number, c: 'USD' | 'VND', day: string) => toUsdCents(n, c, yearOf(day), s.rates);
   const day = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 
@@ -31,5 +31,5 @@ export function settle(s: Snapshot, tz: string) {
   if (profit <= 0) return { moneyIn, paid, profit, sent, payout: null };
   const mine = Math.round(profit / 2);
   const myPayout = paid.my + mine;
-  return { moneyIn, paid, profit, sent, payout: { my: myPayout, ngoc: paid.ngoc + profit - mine, ngocOwes: myPayout - sent } };
+  return { moneyIn, paid, profit, sent, payout: { my: myPayout, ngoc: paid.ngoc + profit - mine, ngocOwesVnd: usdCentsToVnd(myPayout, year, s.rates) - sent } };
 }

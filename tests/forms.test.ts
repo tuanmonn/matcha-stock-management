@@ -71,7 +71,8 @@ describe('manualEtsyBlocked', () => {
 });
 test('all time parsed', () => expect(parseRange({ range: 'all' })).toEqual({ kind: 'all' }));
 
-test('transfer parses cents', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '750.50' }))).toEqual({ ok: true, value: { sent_on: '2026-11-06', amount: 75050, note: '' } }));
+test('transfer parses dong', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '18,750,000' }))).toEqual({ ok: true, value: { sent_on: '2026-11-06', amount: 18750000, note: '' } }));
+test('transfer rejects decimals', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '10.5' })).ok).toBe(false));
 test('transfer amount must be above 0', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '0' })).ok).toBe(false));
 test('paid_by must be My or Ngoc', () => expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1', paid_by: 'bob' })).ok).toBe(false));
 test('paid_by defaults to my and accepts ngoc', () => {
