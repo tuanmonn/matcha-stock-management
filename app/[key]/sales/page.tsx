@@ -70,7 +70,7 @@ export default async function SalesPage({ params }: { params: Promise<{ key: str
       <ActionForm action={saveHistoryAction.bind(null, key)} submit="Save month">
         <div className="row"><label>Month<input type="month" name="month" required /></label></div>
         <div className="row"><label>Product{productSelect}</label></div>
-        <div className="row"><label>Channel<select name="channel"><option value="etsy">Etsy</option><option value="store">Store</option></select></label></div>
+        <div className="row"><label>Channel<select name="channel"><option value="etsy">Etsy</option><option value="store">Store</option><option value="instagram">Instagram</option></select></label></div>
         <div className="cols2">
           <div className="row"><label>Units sold<input name="units" inputMode="numeric" required /></label></div>
           <div className="row"><label>Orders<input name="orders" inputMode="numeric" required /></label></div>

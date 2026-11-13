@@ -119,9 +119,9 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   const empty = { revenue: 0, cogs: 0, expenses: 0, fees: 0, ads: 0, profit: 0, margin: null, units: 0, orders: 0 } as Totals;
   const ids = new Set([...s.products.filter(p => p.active).map(p => p.id), ...Object.keys(d.current.bySku)]);
   const products = [...ids].map(id => [id, name.get(id) ?? id, d.current.bySku[id] ?? empty] as const).sort((a, b) => b[2].profit - a[2].profit);
-  const shared = d.current.byChannel.etsy.profit + d.current.byChannel.store.profit - cur.profit;
+  const shared = d.current.byChannel.etsy.profit + d.current.byChannel.store.profit + d.current.byChannel.instagram.profit - cur.profit;
   const sharedSku = Object.values(d.current.bySku).reduce((n, t) => n + t.profit, 0) - cur.profit;
-  const sharedNote = (v: number, by: string) => v > 0 && <p className="muted">Shop costs not split by {by} (expenses, ads, other Etsy fees): {formatUsd(v)}. {by === 'channel' ? 'Etsy + Store' : 'Products'} − this = total profit.</p>;
+  const sharedNote = (v: number, by: string) => v > 0 && <p className="muted">Shop costs not split by {by} (expenses, ads, other Etsy fees): {formatUsd(v)}. {by === 'channel' ? 'Etsy + Store + Instagram' : 'Products'} − this = total profit.</p>;
   const flow: [string, number, boolean][] = [['Sales', cur.revenue, false], ['Product cost', cur.cogs, true], ['Etsy fees', cur.fees, true], ['Ads', cur.ads, true], ['Expenses', cur.expenses, true], ['Take-home', cur.profit, false]];
   const rows = flow.filter(([l, v]) => v !== 0 || l === 'Sales' || l === 'Take-home');
   const seg = (k: Range['kind'], text: string, href: string) => <Link className={`link${range.kind === k ? ' on' : ''}`} aria-current={range.kind === k ? 'page' : undefined} href={href}>{text}</Link>;
@@ -194,7 +194,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
       {sharedNote(sharedSku, 'product')}
 
       <h2>Etsy and store</h2>
-      <div className="pair">{channel('Etsy', d.current.byChannel.etsy)}{channel('Store', d.current.byChannel.store)}</div>
+      <div className="pair">{channel('Etsy', d.current.byChannel.etsy)}{channel('Store', d.current.byChannel.store)}{channel('Instagram', d.current.byChannel.instagram)}</div>
       {sharedNote(shared, 'channel')}
     </>
   );

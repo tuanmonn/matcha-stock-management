@@ -1,10 +1,10 @@
 import { addMonths, daysIn, inWindow, type Window } from './periods';
 import { toUsdCents } from './money';
-import type { HistoryRow, Rates } from './types';
+import type { Channel, HistoryRow, Rates } from './types';
 
 /** All money in this module is USD cents. */
 export type SaleLine = {
-  day: string; channel: 'etsy' | 'store'; productId: string; orderId: string;
+  day: string; channel: Channel; productId: string; orderId: string;
   qty: number; revenue: number; cogs: number; orders?: number;
 };
 export type CostLine = { day: string; amount: number; kind: 'expense' | 'fee' | 'ads'; productId?: string };
@@ -43,7 +43,8 @@ export function summarize(sales: SaleLine[], costs: CostLine[], w: Window) {
     byChannel: {
       etsy: totals(ss.filter(s => s.channel === 'etsy'), fees),
       store: totals(ss.filter(s => s.channel === 'store'), []),
-    } as Record<'etsy' | 'store', Totals>,
+      instagram: totals(ss.filter(s => s.channel === 'instagram'), []),
+    } as Record<Channel, Totals>,
     bySku,
   };
 }

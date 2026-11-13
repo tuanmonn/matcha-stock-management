@@ -28,21 +28,26 @@ function int(s: string, label: string, min: number): number {
   return Number(clean);
 }
 
-/** USD text becomes cents (max 2 decimals); VND text must be a whole number. */
+/**
+ * USD text becomes cents (max 2 decimals); VND text must be a whole number.
+ * Phones set to Vietnamese type "12,50" and "1.250.000", so either mark works: in USD a comma followed by 1-2 digits is the decimal
+ * point (followed by 3 it groups thousands, as before); in VND every mark groups thousands, in threes.
+ */
 function amount(s: string, currency: Currency, label: string, min: number): number {
-  const clean = s.replace(/[,\s]/g, '');
+  const clean = s.replace(/\s/g, '');
   let n: number;
   if (currency === 'USD') {
-    const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(clean);
+    const m = /^(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?$/.exec(clean);
     if (!m) return fail(`${label} must be an amount like 12.50.`);
-    n = Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0') || 0);
+    n = Number(m[1].replace(/,/g, '')) * 100 + Number((m[2] ?? '').padEnd(2, '0') || 0);
   } else {
-    if (!/^\d+$/.test(clean)) return fail(`${label} must be a whole number of dong.`);
-    n = Number(clean);
+    if (!/^(\d{1,3}([.,]\d{3})+|\d+)$/.test(clean)) return fail(`${label} must be a whole number of dong.`);
+    n = Number(clean.replace(/[.,]/g, ''));
   }
   return n < min ? fail(`${label} must be ${min === 0 ? '0 or more' : 'above 0'}.`) : n;
 }
 
+const CHANNELS = ['etsy', 'store', 'instagram'] as const;
 const payer = (f: FormData, k = 'paid_by', fallback = 'my'): Payer => oneOf(str(f, k) || fallback, ['my', 'ngoc'] as const, 'Paid by');
 const currency = (f: FormData, k: string): Currency => oneOf(str(f, k) || 'USD', ['USD', 'VND'], 'Currency');
 
@@ -59,7 +64,7 @@ export function parseSale(f: FormData) {
   return wrap(() => {
     const id = str(f, 'id');
     if (!UUID.test(id)) fail('Sale id is not valid.');
-    const channel = oneOf(str(f, 'channel'), ['etsy', 'store'] as const, 'Channel');
+    const channel = oneOf(str(f, 'channel'), CHANNELS, 'Channel');
     const product_id = required(str(f, 'product_id'), 'Product');
     const qty = int(str(f, 'qty'), 'Quantity', 1);
     const unit_price = amount(str(f, 'price'), 'USD', 'Price', 0);
@@ -139,7 +144,7 @@ export function parseHistory(f: FormData) {
     return {
       month: `${month}-01`,
       product_id: required(str(f, 'product_id'), 'Product'),
-      channel: oneOf(str(f, 'channel'), ['etsy', 'store'] as const, 'Channel'),
+      channel: oneOf(str(f, 'channel'), CHANNELS, 'Channel'),
       units: int(str(f, 'units'), 'Units', 0),
       revenue: amount(str(f, 'revenue'), cur, 'Revenue', 0),
       currency: cur,
@@ -166,7 +171,9 @@ export const US_ZONES = ['America/New_York', 'America/Chicago', 'America/Denver'
 export function parseRate(f: FormData) {
   return wrap(() => {
     const year = int(str(f, 'year'), 'Year', 2000);
-    const rate = Number(str(f, 'vnd_per_usd').replace(/[,\s]/g, ''));
+    // "25.500" and "25,500" are both 25,500 dong; "25,5" is 25.5.
+    const raw = str(f, 'vnd_per_usd').replace(/\s/g, '');
+    const rate = Number(/^\d{1,3}([.,]\d{3})+$/.test(raw) ? raw.replace(/[.,]/g, '') : raw.replace(',', '.'));
     if (!Number.isFinite(rate) || rate <= 0) fail('Rate must be above 0.');
     return { year, vnd_per_usd: rate };
   });

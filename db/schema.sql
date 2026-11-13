@@ -146,3 +146,8 @@ create table if not exists transfers (
   amount bigint not null check (amount > 0),
   note text not null default ''
 );
+
+alter table sales drop constraint if exists sales_channel_check;
+alter table sales add constraint sales_channel_check check (channel in ('etsy','store','instagram'));
+alter table monthly_history drop constraint if exists monthly_history_channel_check;
+alter table monthly_history add constraint monthly_history_channel_check check (channel in ('etsy','store','instagram'));

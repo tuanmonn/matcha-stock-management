@@ -41,10 +41,10 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
     expect(dayKey((await d.loadSnapshot()).sales[0].sold_at, 'America/New_York')).toBe('2026-11-05');
   });
   test('payer and transfers round-trip', async () => {
-    await d.saveShipment({ ...shipment(5), paid_by: 'ngoc' });
+    const id = await d.saveShipment({ ...shipment(5), paid_by: 'ngoc' });
     await d.saveTransfer({ sent_on: '2026-11-06', amount: 75050, note: 'first' });
     const s = await d.loadSnapshot();
-    expect(s.shipments[0].paid_by).toBe('ngoc');
+    expect(s.shipments.find(x => x.id === id)?.paid_by).toBe('ngoc');
     expect(s.transfers).toEqual([{ id: expect.any(String), sent_on: '2026-11-06', amount: 75050, note: 'first' }]);
     await d.deleteTransfer(s.transfers[0].id);
     expect((await d.loadSnapshot()).transfers).toHaveLength(0);
