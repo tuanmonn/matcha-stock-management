@@ -18,7 +18,7 @@ const rows = <T>(p: Promise<unknown>) => p as Promise<T[]>;
 export async function loadSnapshot(): Promise<Snapshot> {
   const [products, shipments, lines, sales, moves, expenses, history, expiry, fx, settings, ledger, issues, transfers] = await Promise.all([
     rows<Product>(sql`select * from products order by sku`),
-    rows<Shipment>(sql`select id, paid_by, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
+    rows<Shipment>(sql`select id, paid_by, freight_paid_by, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
     rows<ShipmentLine>(sql`select id, shipment_id, product_id, units, vendor_amount::float8 as vendor_amount, vendor_currency, expiry_date::text as expiry_date from shipment_lines`),
     rows<Sale>(sql`select id, channel, to_char(sold_at at time zone 'UTC', ${sql.unsafe(ISO)}) as sold_at, product_id, qty, unit_price::float8 as unit_price, discount::float8 as discount, currency, etsy_receipt_id, etsy_transaction_id from sales order by sold_at desc`),
     rows<StockMove>(sql`select id, product_id, qty_delta, kind, ref, reason, to_char(at at time zone 'UTC', ${sql.unsafe(ISO)}) as at from stock_moves order by at desc`),
@@ -71,7 +71,7 @@ export async function saveShipment(v: Ok<typeof parseShipment>): Promise<string>
   const id = crypto.randomUUID();
   const lines = v.lines.map(l => ({ ...l, id: crypto.randomUUID() }));
   await sql.transaction([
-    sql`insert into shipments (id, paid_by, received_on, freight_amount, freight_currency, note) values (${id}, ${v.paid_by}, ${v.received_on}, ${v.freight_amount}, ${v.freight_currency}, ${v.note})`,
+    sql`insert into shipments (id, paid_by, freight_paid_by, received_on, freight_amount, freight_currency, note) values (${id}, ${v.paid_by}, ${v.freight_paid_by}, ${v.received_on}, ${v.freight_amount}, ${v.freight_currency}, ${v.note})`,
     ...lines.flatMap(l => [
       sql`insert into shipment_lines (id, shipment_id, product_id, units, vendor_amount, vendor_currency, expiry_date) values (${l.id}, ${id}, ${l.product_id}, ${l.units}, ${l.vendor_amount}, ${l.vendor_currency}, ${l.expiry_date})`,
       sql`insert into stock_moves (product_id, qty_delta, kind, ref, at) values (${l.product_id}, ${l.units}, 'shipment', ${l.id}, ${v.received_on}::date::timestamptz)`,

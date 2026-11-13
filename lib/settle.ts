@@ -21,7 +21,7 @@ export function settle(s: Snapshot, tz: string) {
 
   const paid = { my: 0, ngoc: 0 };
   for (const sh of s.shipments) {
-    paid[sh.paid_by] += usd(sh.freight_amount, sh.freight_currency, sh.received_on);
+    paid[sh.freight_paid_by] += usd(sh.freight_amount, sh.freight_currency, sh.received_on);
     for (const l of s.lines) if (l.shipment_id === sh.id) paid[sh.paid_by] += usd(l.vendor_amount, l.vendor_currency, sh.received_on);
   }
   for (const x of s.expenses) paid[x.paid_by] += usd(x.amount, x.currency, x.spent_on);

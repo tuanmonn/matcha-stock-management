@@ -22,8 +22,9 @@ export default async function ShipmentsPage({ params }: { params: Promise<{ key:
       <h2>New shipment</h2>
       <ActionForm action={saveShipmentAction.bind(null, key)} submit="Save shipment">
         <div className="row"><label>Received on<input type="date" name="received_on" defaultValue={today} required /></label></div>
-        <div className="row"><label>Paid by<select name="paid_by"><option value="my">My</option><option value="ngoc">Ngoc</option></select></label></div>
+        <div className="row"><label>Matcha paid by<select name="paid_by"><option value="my">My</option><option value="ngoc">Ngoc</option></select></label></div>
         <div className="cols2">
+          <div className="row"><label>Freight paid by<select name="freight_paid_by"><option value="my">My</option><option value="ngoc">Ngoc</option></select></label></div>
           <div className="row"><label>Freight<input name="freight" inputMode="decimal" defaultValue="0" required /></label></div>
           <div className="row"><label>Freight currency<select name="freight_currency"><option>USD</option><option>VND</option></select></label></div>
         </div>
@@ -50,7 +51,7 @@ export default async function ShipmentsPage({ params }: { params: Promise<{ key:
       {s.shipments.length === 0 && <p>None yet.</p>}
       {s.shipments.map(sh => (
         <div className="card shipment" key={sh.id}>
-          <p className="head"><strong>{sh.received_on}</strong> · paid by {PAYER[sh.paid_by]} · freight {money(sh.freight_amount, sh.freight_currency)}{sh.note && ` · ${sh.note}`}</p>
+          <p className="head"><strong>{sh.received_on}</strong> · matcha paid by {PAYER[sh.paid_by]} · freight {money(sh.freight_amount, sh.freight_currency)} paid by {PAYER[sh.freight_paid_by]}{sh.note && ` · ${sh.note}`}</p>
           <ul>
             {s.lines.filter(l => l.shipment_id === sh.id).map(l => (
               <li key={l.id}>{sku.get(l.product_id)} × {l.units}, cost {money(l.vendor_amount, l.vendor_currency)}, expires {l.expiry_date}</li>

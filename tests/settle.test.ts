@@ -7,7 +7,7 @@ const base = {
   products: [], moves: [], expiry: [], issues: [], etsy: { status: null }, history: [], ledger: [], transfers: [],
   rates: { 2026: 25000 }, timeZone: 'America/Chicago',
   sales: [{ id: 's', channel: 'store', sold_at: '2026-11-05T15:00:00Z', product_id: 'p', qty: 10, unit_price: 10000, discount: 0, currency: 'USD', etsy_receipt_id: null, etsy_transaction_id: null }],
-  shipments: [{ id: 'sh', paid_by: 'my', received_on: '2026-10-01', freight_amount: 10000, freight_currency: 'USD', note: '' }],
+  shipments: [{ id: 'sh', paid_by: 'my', freight_paid_by: 'my', received_on: '2026-10-01', freight_amount: 10000, freight_currency: 'USD', note: '' }],
   lines: [{ id: 'l', shipment_id: 'sh', product_id: 'p', units: 10, vendor_amount: 50000, vendor_currency: 'USD', expiry_date: '2027-01-01' }],
   expenses: [{ id: 'x', paid_by: 'ngoc', spent_on: '2026-10-02', category: 'packaging', amount: 10000, currency: 'USD', note: '' }],
 } as unknown as Snapshot;
@@ -35,4 +35,8 @@ test('odd cent rounds up for My', () => {
   const r = settle({ ...base, expenses: [{ ...base.expenses[0], amount: 10001 }] }, 'America/Chicago');
   expect(r.profit).toBe(29999);
   expect(r.payout).toMatchObject({ my: 60000 + 15000, ngoc: 10001 + 14999 });
+});
+test('freight can be paid by someone other than the matcha payer', () => {
+  const r = settle({ ...base, shipments: [{ ...base.shipments[0], freight_paid_by: 'ngoc' }] } as Snapshot, 'America/Chicago');
+  expect(r.paid).toEqual({ my: 50000, ngoc: 20000 });
 });

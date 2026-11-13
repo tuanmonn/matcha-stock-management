@@ -137,6 +137,7 @@ alter table settings add column if not exists etsy_code_verifier text;
 alter table settings add column if not exists etsy_oauth_started_at timestamptz;
 
 alter table shipments add column if not exists paid_by text not null default 'my' check (paid_by in ('my','ngoc'));
+alter table shipments add column if not exists freight_paid_by text not null default 'my' check (freight_paid_by in ('my','ngoc'));
 alter table expenses add column if not exists paid_by text not null default 'my' check (paid_by in ('my','ngoc'));
 
 create table if not exists transfers (

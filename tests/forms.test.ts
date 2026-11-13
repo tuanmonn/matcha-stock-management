@@ -25,7 +25,7 @@ test('shipment parses lines', () => expect(parseShipment(fd({
   'line_product_id[]': ['p1', 'p2'], 'line_units[]': ['10', '5'], 'line_vendor[]': ['100', '1,000,000'],
   'line_vendor_currency[]': ['USD', 'VND'], 'line_expiry[]': ['2027-03-31', '2027-04-30'],
 }))).toEqual({ ok: true, value: {
-  paid_by: 'my', received_on: '2026-11-06', freight_amount: 20000, freight_currency: 'USD', note: '',
+  paid_by: 'my', freight_paid_by: 'my', received_on: '2026-11-06', freight_amount: 20000, freight_currency: 'USD', note: '',
   lines: [
     { product_id: 'p1', units: 10, vendor_amount: 10000, vendor_currency: 'USD', expiry_date: '2027-03-31' },
     { product_id: 'p2', units: 5, vendor_amount: 1000000, vendor_currency: 'VND', expiry_date: '2027-04-30' },
@@ -77,4 +77,9 @@ test('paid_by must be My or Ngoc', () => expect(parseExpense(fd({ spent_on: '202
 test('paid_by defaults to my and accepts ngoc', () => {
   expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1' }))).toMatchObject({ value: { paid_by: 'my' } });
   expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1', paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'ngoc' } });
+});
+test('freight payer defaults to the matcha payer and can differ', () => {
+  const base = { received_on: '2026-11-06', freight: '1', freight_currency: 'USD', 'line_product_id[]': 'p1', 'line_units[]': '1', 'line_vendor[]': '1', 'line_vendor_currency[]': 'USD', 'line_expiry[]': '2027-01-01' };
+  expect(parseShipment(fd({ ...base, paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'ngoc', freight_paid_by: 'ngoc' } });
+  expect(parseShipment(fd({ ...base, paid_by: 'my', freight_paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'my', freight_paid_by: 'ngoc' } });
 });

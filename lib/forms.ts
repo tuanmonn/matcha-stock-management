@@ -43,7 +43,7 @@ function amount(s: string, currency: Currency, label: string, min: number): numb
   return n < min ? fail(`${label} must be ${min === 0 ? '0 or more' : 'above 0'}.`) : n;
 }
 
-const payer = (f: FormData): Payer => oneOf(str(f, 'paid_by') || 'my', ['my', 'ngoc'] as const, 'Paid by');
+const payer = (f: FormData, k = 'paid_by', fallback = 'my'): Payer => oneOf(str(f, k) || fallback, ['my', 'ngoc'] as const, 'Paid by');
 const currency = (f: FormData, k: string): Currency => oneOf(str(f, k) || 'USD', ['USD', 'VND'], 'Currency');
 
 /** Etsy orders paid before the connection day are never imported, so those may be entered by hand. */
@@ -86,7 +86,8 @@ export function parseShipment(f: FormData) {
         expiry_date: day(at('line_expiry[]', i), 'Expiry date'),
       };
     });
-    return { paid_by: payer(f), received_on, freight_amount, freight_currency, note: str(f, 'note'), lines };
+    const paid_by = payer(f);
+    return { paid_by, freight_paid_by: payer(f, 'freight_paid_by', paid_by), received_on, freight_amount, freight_currency, note: str(f, 'note'), lines };
   });
 }
 
