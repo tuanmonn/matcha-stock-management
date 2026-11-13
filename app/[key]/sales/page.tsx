@@ -41,6 +41,7 @@ export default async function SalesPage({ params }: { params: Promise<{ key: str
       <h2>Expenses</h2>
       <ActionForm action={saveExpenseAction.bind(null, key)} submit="Add expense">
         <div className="row"><label>Date<input type="date" name="spent_on" defaultValue={today} required /></label></div>
+        <div className="row"><label>Paid by<select name="paid_by"><option value="my">My</option><option value="ngoc">Ngoc</option></select></label></div>
         <div className="row"><label>Category<select name="category"><option value="packaging">Packaging</option><option value="gift">Gift</option></select></label></div>
         <div className="cols2">
           <div className="row"><label>Amount<input name="amount" inputMode="decimal" required /></label></div>
@@ -49,15 +50,15 @@ export default async function SalesPage({ params }: { params: Promise<{ key: str
         <div className="row"><label>Note (optional)<input name="note" /></label></div>
       </ActionForm>
       <div className="tablewrap"><table>
-        <thead><tr><th>Date</th><th>Category</th><th className="n">Amount</th><th>Note</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Category</th><th>Paid by</th><th className="n">Amount</th><th>Note</th><th></th></tr></thead>
         <tbody>
           {s.expenses.map(x => (
             <tr key={x.id}>
-              <td>{x.spent_on}</td><td>{x.category}</td><td className="n">{money(x.amount, x.currency)}</td><td>{x.note}</td>
+              <td>{x.spent_on}</td><td>{x.category}</td><td>{x.paid_by === 'my' ? 'My' : 'Ngoc'}</td><td className="n">{money(x.amount, x.currency)}</td><td>{x.note}</td>
               <td><DeleteButton action={deleteExpenseAction.bind(null, key, x.id)} ask="Delete this expense?" /></td>
             </tr>
           ))}
-          {s.expenses.length === 0 && <tr><td colSpan={5}>None yet.</td></tr>}
+          {s.expenses.length === 0 && <tr><td colSpan={6}>None yet.</td></tr>}
         </tbody>
       </table></div>
 

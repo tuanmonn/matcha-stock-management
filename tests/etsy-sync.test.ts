@@ -35,7 +35,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
     await sql`truncate sales, stock_moves, shipment_lines, shipments, expiry_dates, etsy_ledger, sync_issues, products cascade`;
     await sql`update settings set etsy_shop_id = '123', etsy_connected_at = ${connected}, etsy_status = 'connected', etsy_access_token = 'at', etsy_refresh_token = 'rt', etsy_expires_at = ${new Date(Date.now() + 3600_000).toISOString()} where id = 1`;
     p = await d.saveProduct({ sku: 'M30', name: 'Matcha 30g', grams: 30, packaging: 'bag', store_price: 1400, details: '', etsy_listing_id: '555', low_stock_at: 3 });
-    await d.saveShipment({ received_on: '2026-10-01', freight_amount: 0, freight_currency: 'USD', note: '', lines: [{ product_id: p, units: 10, vendor_amount: 1000, vendor_currency: 'USD', expiry_date: '2027-03-31' }] });
+    await d.saveShipment({ paid_by: 'my', received_on: '2026-10-01', freight_amount: 0, freight_currency: 'USD', note: '', lines: [{ product_id: p, units: 10, vendor_amount: 1000, vendor_currency: 'USD', expiry_date: '2027-03-31' }] });
   });
 
   const stock = async () => Number((await sql`select sum(qty_delta) as n from stock_moves where product_id = ${p}`)[0].n);

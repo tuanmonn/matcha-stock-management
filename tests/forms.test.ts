@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { parseSale, manualEtsyBlocked, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone, dropBlankLines } from '@/lib/forms';
+import { parseSale, manualEtsyBlocked, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseRange, parseRate, parseTimeZone, parseTransfer, dropBlankLines } from '@/lib/forms';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
 const fd = (o: Record<string, string | string[]>) => {
@@ -25,7 +25,7 @@ test('shipment parses lines', () => expect(parseShipment(fd({
   'line_product_id[]': ['p1', 'p2'], 'line_units[]': ['10', '5'], 'line_vendor[]': ['100', '1,000,000'],
   'line_vendor_currency[]': ['USD', 'VND'], 'line_expiry[]': ['2027-03-31', '2027-04-30'],
 }))).toEqual({ ok: true, value: {
-  received_on: '2026-11-06', freight_amount: 20000, freight_currency: 'USD', note: '',
+  paid_by: 'my', received_on: '2026-11-06', freight_amount: 20000, freight_currency: 'USD', note: '',
   lines: [
     { product_id: 'p1', units: 10, vendor_amount: 10000, vendor_currency: 'USD', expiry_date: '2027-03-31' },
     { product_id: 'p2', units: 5, vendor_amount: 1000000, vendor_currency: 'VND', expiry_date: '2027-04-30' },
@@ -70,3 +70,11 @@ describe('manualEtsyBlocked', () => {
   it('always allows the store channel', () => expect(manualEtsyBlocked('store', 'connected', '2026-11-06', '2026-11-05')).toBeNull());
 });
 test('all time parsed', () => expect(parseRange({ range: 'all' })).toEqual({ kind: 'all' }));
+
+test('transfer parses cents', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '750.50' }))).toEqual({ ok: true, value: { sent_on: '2026-11-06', amount: 75050, note: '' } }));
+test('transfer amount must be above 0', () => expect(parseTransfer(fd({ sent_on: '2026-11-06', amount: '0' })).ok).toBe(false));
+test('paid_by must be My or Ngoc', () => expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1', paid_by: 'bob' })).ok).toBe(false));
+test('paid_by defaults to my and accepts ngoc', () => {
+  expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1' }))).toMatchObject({ value: { paid_by: 'my' } });
+  expect(parseExpense(fd({ spent_on: '2026-11-06', category: 'gift', amount: '1', paid_by: 'ngoc' }))).toMatchObject({ value: { paid_by: 'ngoc' } });
+});

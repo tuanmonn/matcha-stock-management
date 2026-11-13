@@ -1,14 +1,14 @@
 import { sql } from './db';
 import type { Parsed } from './forms';
-import type { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct } from './forms';
-import type { Expense, ExpiryDate, HistoryRow, LedgerRow, Product, Rates, Sale, Shipment, ShipmentLine, StockMove, SyncIssue } from './types';
+import type { parseSale, parseShipment, parseCorrection, parseExpense, parseHistory, parseProduct, parseTransfer } from './forms';
+import type { Expense, ExpiryDate, HistoryRow, LedgerRow, Product, Rates, Sale, Shipment, ShipmentLine, StockMove, SyncIssue, Transfer } from './types';
 
 type Ok<F extends (f: FormData) => Parsed<unknown>> = Extract<ReturnType<F>, { ok: true }>['value'];
 
 export type Snapshot = {
   products: Product[]; shipments: Shipment[]; lines: ShipmentLine[]; sales: Sale[]; moves: StockMove[];
   expenses: Expense[]; history: HistoryRow[]; expiry: ExpiryDate[]; rates: Rates; timeZone: string | null;
-  ledger: LedgerRow[]; issues: SyncIssue[]; etsy: { status: 'connected' | 'reconnect' | null };
+  ledger: LedgerRow[]; issues: SyncIssue[]; transfers: Transfer[]; etsy: { status: 'connected' | 'reconnect' | null };
 };
 
 const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
@@ -16,25 +16,26 @@ const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const rows = <T>(p: Promise<unknown>) => p as Promise<T[]>;
 
 export async function loadSnapshot(): Promise<Snapshot> {
-  const [products, shipments, lines, sales, moves, expenses, history, expiry, fx, settings, ledger, issues] = await Promise.all([
+  const [products, shipments, lines, sales, moves, expenses, history, expiry, fx, settings, ledger, issues, transfers] = await Promise.all([
     rows<Product>(sql`select * from products order by sku`),
-    rows<Shipment>(sql`select id, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
+    rows<Shipment>(sql`select id, paid_by, received_on::text as received_on, freight_amount::float8 as freight_amount, freight_currency, note from shipments order by received_on desc, id`),
     rows<ShipmentLine>(sql`select id, shipment_id, product_id, units, vendor_amount::float8 as vendor_amount, vendor_currency, expiry_date::text as expiry_date from shipment_lines`),
     rows<Sale>(sql`select id, channel, to_char(sold_at at time zone 'UTC', ${sql.unsafe(ISO)}) as sold_at, product_id, qty, unit_price::float8 as unit_price, discount::float8 as discount, currency, etsy_receipt_id, etsy_transaction_id from sales order by sold_at desc`),
     rows<StockMove>(sql`select id, product_id, qty_delta, kind, ref, reason, to_char(at at time zone 'UTC', ${sql.unsafe(ISO)}) as at from stock_moves order by at desc`),
-    rows<Expense>(sql`select id, spent_on::text as spent_on, category, amount::float8 as amount, currency, note from expenses order by spent_on desc`),
+    rows<Expense>(sql`select id, paid_by, spent_on::text as spent_on, category, amount::float8 as amount, currency, note from expenses order by spent_on desc`),
     rows<HistoryRow>(sql`select id, month::text as month, product_id, channel, units, revenue::float8 as revenue, currency, orders from monthly_history order by month desc`),
     rows<ExpiryDate>(sql`select id, product_id, expiry_date::text as expiry_date, to_char(cleared_at at time zone 'UTC', ${sql.unsafe(ISO)}) as cleared_at from expiry_dates order by expiry_date`),
     rows<{ year: number; vnd_per_usd: number }>(sql`select year, vnd_per_usd::float8 as vnd_per_usd from fx_rates`),
     rows<{ time_zone: string | null; etsy_status: 'connected' | 'reconnect' | null }>(sql`select time_zone, etsy_status from settings where id = 1`),
     rows<LedgerRow>(sql`select entry_id, to_char(at at time zone 'UTC', ${sql.unsafe(ISO)}) as at, ledger_type, category, amount::float8 as amount, currency, product_id from etsy_ledger order by at desc`),
     rows<SyncIssue>(sql`select id, kind, ref, detail, to_char(created_at at time zone 'UTC', ${sql.unsafe(ISO)}) as created_at from sync_issues where resolved_at is null order by created_at`),
+    rows<Transfer>(sql`select id, sent_on::text as sent_on, amount::float8 as amount, note from transfers order by sent_on desc, id`),
   ]);
   return {
     products, shipments, lines, sales, moves, expenses, history, expiry,
     rates: Object.fromEntries(fx.map(r => [r.year, r.vnd_per_usd])),
     timeZone: settings[0]?.time_zone ?? null,
-    ledger, issues, etsy: { status: settings[0]?.etsy_status ?? null },
+    ledger, issues, transfers, etsy: { status: settings[0]?.etsy_status ?? null },
   };
 }
 
@@ -70,7 +71,7 @@ export async function saveShipment(v: Ok<typeof parseShipment>): Promise<string>
   const id = crypto.randomUUID();
   const lines = v.lines.map(l => ({ ...l, id: crypto.randomUUID() }));
   await sql.transaction([
-    sql`insert into shipments (id, received_on, freight_amount, freight_currency, note) values (${id}, ${v.received_on}, ${v.freight_amount}, ${v.freight_currency}, ${v.note})`,
+    sql`insert into shipments (id, paid_by, received_on, freight_amount, freight_currency, note) values (${id}, ${v.paid_by}, ${v.received_on}, ${v.freight_amount}, ${v.freight_currency}, ${v.note})`,
     ...lines.flatMap(l => [
       sql`insert into shipment_lines (id, shipment_id, product_id, units, vendor_amount, vendor_currency, expiry_date) values (${l.id}, ${id}, ${l.product_id}, ${l.units}, ${l.vendor_amount}, ${l.vendor_currency}, ${l.expiry_date})`,
       sql`insert into stock_moves (product_id, qty_delta, kind, ref, at) values (${l.product_id}, ${l.units}, 'shipment', ${l.id}, ${v.received_on}::date::timestamptz)`,
@@ -98,10 +99,17 @@ export async function saveCorrection(v: Ok<typeof parseCorrection>, now: Date): 
 }
 
 export async function saveExpense(v: Ok<typeof parseExpense>): Promise<void> {
-  await sql.transaction([sql`insert into expenses (spent_on, category, amount, currency, note) values (${v.spent_on}, ${v.category}, ${v.amount}, ${v.currency}, ${v.note})`]);
+  await sql.transaction([sql`insert into expenses (paid_by, spent_on, category, amount, currency, note) values (${v.paid_by}, ${v.spent_on}, ${v.category}, ${v.amount}, ${v.currency}, ${v.note})`]);
 }
 export async function deleteExpense(id: string): Promise<void> {
   await sql.transaction([sql`delete from expenses where id = ${id}`]);
+}
+
+export async function saveTransfer(v: Ok<typeof parseTransfer>): Promise<void> {
+  await sql.transaction([sql`insert into transfers (sent_on, amount, note) values (${v.sent_on}, ${v.amount}, ${v.note})`]);
+}
+export async function deleteTransfer(id: string): Promise<void> {
+  await sql.transaction([sql`delete from transfers where id = ${id}`]);
 }
 
 export async function saveHistory(v: Ok<typeof parseHistory>): Promise<void> {

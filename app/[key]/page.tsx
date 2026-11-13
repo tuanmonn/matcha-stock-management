@@ -130,6 +130,8 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
     <>
       <h1>Dashboard</h1>
 
+      <p><Link className="link" href={`${base}/settle`}>Settle up: who gets what, and what Ngoc sends →</Link></p>
+
       {life && (
         <section className="hero">
           <h2>Since you started</h2>

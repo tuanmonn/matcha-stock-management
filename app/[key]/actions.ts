@@ -7,8 +7,8 @@ import { pkce, authorizeUrl } from '@/lib/etsy/client';
 import { runDaily } from '@/lib/etsy/sync';
 import { requireKey } from '@/lib/access';
 import { dayKey } from '@/lib/periods';
-import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory } from '@/lib/data';
-import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory, manualEtsyBlocked } from '@/lib/forms';
+import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory, saveTransfer, deleteTransfer } from '@/lib/data';
+import { parseSale, parseProduct, parseRate, parseTimeZone, parseShipment, parseCorrection, dropBlankLines, parseExpense, parseHistory, parseTransfer, manualEtsyBlocked } from '@/lib/forms';
 import type { State } from './ui';
 
 const SAVE_FAILED = 'Could not save. Check the values and try again.';
@@ -106,6 +106,19 @@ export async function saveExpenseAction(key: string, _prev: State, f: FormData):
 export async function deleteExpenseAction(key: string, id: string): Promise<void> {
   requireKey(key);
   await deleteExpense(id);
+  revalidatePath(`/${key}`, 'layout');
+}
+
+export async function saveTransferAction(key: string, _prev: State, f: FormData): Promise<State> {
+  requireKey(key);
+  const p = parseTransfer(f);
+  if (!p.ok) return { error: p.error };
+  return attempt(key, async () => { await saveTransfer(p.value); });
+}
+
+export async function deleteTransferAction(key: string, id: string): Promise<void> {
+  requireKey(key);
+  await deleteTransfer(id);
   revalidatePath(`/${key}`, 'layout');
 }
 

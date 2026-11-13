@@ -1,4 +1,4 @@
-import type { Currency } from './types';
+import type { Currency, Payer } from './types';
 import type { Range } from './periods';
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -43,6 +43,7 @@ function amount(s: string, currency: Currency, label: string, min: number): numb
   return n < min ? fail(`${label} must be ${min === 0 ? '0 or more' : 'above 0'}.`) : n;
 }
 
+const payer = (f: FormData): Payer => oneOf(str(f, 'paid_by') || 'my', ['my', 'ngoc'] as const, 'Paid by');
 const currency = (f: FormData, k: string): Currency => oneOf(str(f, k) || 'USD', ['USD', 'VND'], 'Currency');
 
 /** Etsy orders paid before the connection day are never imported, so those may be entered by hand. */
@@ -85,7 +86,7 @@ export function parseShipment(f: FormData) {
         expiry_date: day(at('line_expiry[]', i), 'Expiry date'),
       };
     });
-    return { received_on, freight_amount, freight_currency, note: str(f, 'note'), lines };
+    return { paid_by: payer(f), received_on, freight_amount, freight_currency, note: str(f, 'note'), lines };
   });
 }
 
@@ -111,6 +112,7 @@ export function parseExpense(f: FormData) {
   return wrap(() => {
     const cur = currency(f, 'currency');
     return {
+      paid_by: payer(f),
       spent_on: day(str(f, 'spent_on'), 'Date'),
       category: oneOf(str(f, 'category'), ['packaging', 'gift'] as const, 'Category'),
       amount: amount(str(f, 'amount'), cur, 'Amount', 1),
@@ -118,6 +120,14 @@ export function parseExpense(f: FormData) {
       note: str(f, 'note'),
     };
   });
+}
+
+export function parseTransfer(f: FormData) {
+  return wrap(() => ({
+    sent_on: day(str(f, 'sent_on'), 'Date'),
+    amount: amount(str(f, 'amount'), 'USD', 'Amount', 1),
+    note: str(f, 'note'),
+  }));
 }
 
 export function parseHistory(f: FormData) {

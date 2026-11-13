@@ -135,3 +135,13 @@ alter table settings add column if not exists etsy_status text check (etsy_statu
 alter table settings add column if not exists etsy_oauth_state text;
 alter table settings add column if not exists etsy_code_verifier text;
 alter table settings add column if not exists etsy_oauth_started_at timestamptz;
+
+alter table shipments add column if not exists paid_by text not null default 'my' check (paid_by in ('my','ngoc'));
+alter table expenses add column if not exists paid_by text not null default 'my' check (paid_by in ('my','ngoc'));
+
+create table if not exists transfers (
+  id uuid primary key default gen_random_uuid(),
+  sent_on date not null,
+  amount bigint not null check (amount > 0),
+  note text not null default ''
+);

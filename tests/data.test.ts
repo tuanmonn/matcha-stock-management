@@ -9,7 +9,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   let sale: { id: string; channel: 'store'; product_id: string; qty: number; unit_price: number; sold_on: null };
   const now = new Date('2026-11-05T15:00:00Z');
   const shipment = (units: number) => ({
-    received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD' as const, note: '',
+    paid_by: 'my' as const, received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD' as const, note: '',
     lines: [{ product_id: p, units, vendor_amount: 10000, vendor_currency: 'USD' as const, expiry_date: '2027-03-31' }],
   });
 
@@ -26,7 +26,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   });
 
   beforeEach(async () => {
-    await sql`truncate sales, stock_moves, shipment_lines, shipments, expenses, monthly_history, expiry_dates, fx_rates, products cascade`;
+    await sql`truncate sales, stock_moves, shipment_lines, shipments, expenses, transfers, monthly_history, expiry_dates, fx_rates, products cascade`;
     await sql`update settings set time_zone = null`;
     p = await d.saveProduct({ sku: 'M30', name: 'Matcha 30g', grams: 30, packaging: 'bag', store_price: 1400, details: '', etsy_listing_id: null, low_stock_at: 3 });
     await d.saveShipment(shipment(10));
@@ -39,6 +39,15 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
     const { dayKey } = await import('@/lib/periods');
     await d.saveSale({ ...sale, sold_on: '2026-11-05' }, now);
     expect(dayKey((await d.loadSnapshot()).sales[0].sold_at, 'America/New_York')).toBe('2026-11-05');
+  });
+  test('payer and transfers round-trip', async () => {
+    await d.saveShipment({ ...shipment(5), paid_by: 'ngoc' });
+    await d.saveTransfer({ sent_on: '2026-11-06', amount: 75050, note: 'first' });
+    const s = await d.loadSnapshot();
+    expect(s.shipments[0].paid_by).toBe('ngoc');
+    expect(s.transfers).toEqual([{ id: expect.any(String), sent_on: '2026-11-06', amount: 75050, note: 'first' }]);
+    await d.deleteTransfer(s.transfers[0].id);
+    expect((await d.loadSnapshot()).transfers).toHaveLength(0);
   });
   test('deleting a sale restores stock', async () => { await d.saveSale(sale, now); await d.deleteSale(sale.id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
   test('deleting a shipment removes its stock', async () => { const id = await d.saveShipment(shipment(5)); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(15); await d.deleteShipment(id); expect(d.stockOf((await d.loadSnapshot()).moves, p)).toBe(10); });
