@@ -7,7 +7,8 @@ export type Product = {
   store_price: number; etsy_listing_id: string | null; low_stock_at: number; active: boolean;
 };
 export type Payer = 'my' | 'ngoc';
-export type Shipment = { id: string; paid_by: Payer; received_on: string; freight_amount: number; freight_currency: Currency; note: string };
+/** paid_by pays the matcha (vendor cost); freight_paid_by pays the freight. */
+export type Shipment = { id: string; paid_by: Payer; freight_paid_by: Payer; received_on: string; freight_amount: number; freight_currency: Currency; note: string };
 export type ShipmentLine = {
   id: string; shipment_id: string; product_id: string; units: number;
   vendor_amount: number; vendor_currency: Currency; expiry_date: string;

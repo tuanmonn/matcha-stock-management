@@ -9,7 +9,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('data layer', () => {
   let sale: { id: string; channel: 'store'; product_id: string; qty: number; unit_price: number; sold_on: null };
   const now = new Date('2026-11-05T15:00:00Z');
   const shipment = (units: number) => ({
-    paid_by: 'my' as const, received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD' as const, note: '',
+    paid_by: 'my' as const, freight_paid_by: 'my' as const, received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD' as const, note: '',
     lines: [{ product_id: p, units, vendor_amount: 10000, vendor_currency: 'USD' as const, expiry_date: '2027-03-31' }],
   });
 

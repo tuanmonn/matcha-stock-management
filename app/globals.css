@@ -56,7 +56,7 @@ details.sub form { margin-bottom: 12px; }
 
 .tablewrap { overflow-x: auto; max-width: 100%; }
 table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: break-word; }
 td input, td select { width: 100%; min-width: 80px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
