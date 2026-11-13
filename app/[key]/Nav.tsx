@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const LINKS: [string, string][] = [['', 'Dashboard'], ['/sale', 'Record sale'], ['/stock', 'Stock'], ['/shipments', 'Shipments'], ['/sales', 'Sales'], ['/settings', 'Settings']];
+const LINKS: [string, string][] = [['', 'Dashboard'], ['/sale', 'Record sale'], ['/stock', 'Stock'], ['/shipments', 'Shipments'], ['/sales', 'Sales'], ['/settle', 'Settle up'], ['/settings', 'Settings']];
 
 export default function Nav({ base }: { base: string }) {
   const path = usePathname();

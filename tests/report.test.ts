@@ -12,15 +12,15 @@ const novSale = mkSale('s-nov', 2, '2026-11-05T15:00:00Z');
 const octSale = mkSale('s-oct', 2, '2026-10-05T15:00:00Z');
 const snap: Snapshot = {
   products: [{ id: 'p1', sku: 'M100', name: 'Matcha 100g', grams: 100, packaging: 'can', details: '', store_price: 5000, etsy_listing_id: null, low_stock_at: 3, active: true }],
-  shipments: [{ id: 'sh1', received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD', note: '' }],
+  shipments: [{ id: 'sh1', paid_by: 'my' as const, received_on: '2026-10-01', freight_amount: 2000, freight_currency: 'USD', note: '' }],
   lines: [{ id: 'l1', shipment_id: 'sh1', product_id: 'p1', units: 10, vendor_amount: 10000, vendor_currency: 'USD', expiry_date: '2027-10-01' }],
   sales: [novSale, octSale],
   moves: [{ id: 'm0', product_id: 'p1', qty_delta: 10, kind: 'shipment', ref: 'l1', reason: '', at: '2026-10-01T00:00:00.000Z' }, mkMove(novSale), mkMove(octSale)],
   expenses: [], history: [], expiry: [{ id: 'e1', product_id: 'p1', expiry_date: '2027-10-01', cleared_at: null }],
   rates: { 2026: 25000 }, timeZone: 'America/New_York',
-  ledger: [], issues: [], etsy: { status: null },
+  ledger: [], issues: [], transfers: [], etsy: { status: null },
 };
-const exp: Expense = { id: 'x1', spent_on: '2026-11-02', category: 'gift', amount: 1000, currency: 'USD', note: '' };
+const exp: Expense = { id: 'x1', paid_by: 'my', spent_on: '2026-11-02', category: 'gift', amount: 1000, currency: 'USD', note: '' };
 const hist = (m: string, units: number, revenue: number, orders: number): HistoryRow => ({ id: 'h1', month: m, product_id: 'p1', channel: 'etsy', units, revenue, currency: 'USD', orders });
 const bigSale = mkSale('s-big', 8, '2026-11-06T15:00:00Z');
 
