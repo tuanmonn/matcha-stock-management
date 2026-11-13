@@ -126,7 +126,7 @@ export function parseExpense(f: FormData) {
 export function parseTransfer(f: FormData) {
   return wrap(() => ({
     sent_on: day(str(f, 'sent_on'), 'Date'),
-    amount: amount(str(f, 'amount'), 'USD', 'Amount', 1),
+    amount: amount(str(f, 'amount'), 'VND', 'Amount', 1),
     note: str(f, 'note'),
   }));
 }

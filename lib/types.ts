@@ -32,5 +32,5 @@ export type LedgerRow = {
   currency: Currency; product_id: string | null; ledger_type: string;
 };
 export type SyncIssue = { id: string; kind: 'mismatch' | 'unknown_listing' | 'etsy_error'; ref: string; detail: string; created_at: string };
-/** Money Ngoc has already sent to My, in USD cents. */
+/** Money Ngoc has already sent to My, in whole Vietnamese dong (what lands in My's account). */
 export type Transfer = { id: string; sent_on: string; amount: number; note: string };
