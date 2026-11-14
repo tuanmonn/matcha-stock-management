@@ -6,7 +6,10 @@ export type EtsyTransaction = {
   price: { amount: number; divisor: number; currency_code: string };
   paid_timestamp: number | null; shop_coupon: number; buyer_coupon: number;
 };
-export type EtsyReceipt = { receipt_id: number; created_timestamp: number; transactions: EtsyTransaction[] };
+export type EtsyReceipt = { receipt_id: number; created_timestamp: number; status?: string; transactions: EtsyTransaction[] };
+
+// Etsy's spec lists lowercase statuses; compare case-insensitively in case live data differs.
+export const isCanceled = (r: EtsyReceipt) => r.status?.toLowerCase() === 'canceled';
 export type EtsyLedgerEntry = {
   entry_id: number; ledger_type: string; reference_type: string; reference_id: string;
   amount: number; currency: string; created_timestamp: number;
@@ -29,6 +32,7 @@ export function saleIdFor(transactionId: string): string {
 export function receiptToSales(receipt: EtsyReceipt, link: { bySku: Map<string, string>; byListing: Map<string, string> }, connectedAt: Date) {
   const sales: EtsySaleRow[] = [];
   const issues: IssueRow[] = [];
+  if (isCanceled(receipt)) return { sales, issues };
   for (const t of receipt.transactions) {
     const paid = (t.paid_timestamp ?? receipt.created_timestamp) * 1000;
     if (paid < connectedAt.getTime()) continue;

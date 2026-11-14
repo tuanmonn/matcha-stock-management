@@ -81,7 +81,9 @@ Replaying keeps old reports correct when a shipment is edited or a rate changes,
 3. It fetches the receipt and writes one sale and one stock move per transaction. The unique keys on `etsy_transaction_id` and `(kind, ref)` mean a repeat delivery changes nothing.
 4. A listing that isn't linked to a SKU raises `unknown_listing`.
 
-**Cancellations and refunds (FR-10): backlog.** Not handled for now. `order.canceled` is ignored, and a canceled or refunded order still counts as a sale. Fix stock with a correction.
+**Cancellations (FR-10).** Etsy sends `order.canceled` with the same receipt link as `order.paid`. The webhook fetches the receipt, and when its `status` is `canceled` the app deletes that receipt's sales and their stock moves, as Delete does for a store sale. Units come back and revenue drops. Import skips canceled receipts, so a later catch-up never brings the sales back. The daily catch-up also asks for receipts canceled in the last 7 days (`was_canceled`, `min_last_modified`), in case a webhook was missed.
+
+**Refunds (FR-25): backlog.** A refunded order still counts as a sale. Fix stock with a correction.
 
 **Shipment (FR-03).** You enter freight and one line per SKU. Saving writes the lines, `+units` stock moves and new expiry dates.
 
@@ -91,7 +93,7 @@ Replaying keeps old reports correct when a shipment is edited or a rate changes,
 
 **Daily job (one Vercel cron, R6).** Steps run in this order, and one failing step doesn't stop the rest:
 1. Refresh the Etsy access token, saving whatever refresh token Etsy returns.
-2. Catch up on paid receipts from the last 7 days, in case a webhook was missed.
+2. Catch up on paid and canceled receipts from the last 7 days, in case a webhook was missed.
 3. Import new ledger entries and categorize them.
 4. Compare each SKU's Etsy quantity with the app's stock and flag mismatches (FR-09).
 5. Send Telegram alerts.

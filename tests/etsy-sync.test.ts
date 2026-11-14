@@ -48,6 +48,17 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
     expect(await stock()).toBe(8);
   });
 
+  test('a canceled receipt removes its sales, returns stock, and is not imported again', async () => {
+    await s.importReceipt(receipt());
+    expect(await stock()).toBe(8);
+    const canceled = { ...receipt(), status: 'Canceled' };
+    expect(await s.importReceipt(canceled)).toBe(0);
+    expect(await stock()).toBe(10);
+    expect(await sql`select 1 from sales`).toHaveLength(0);
+    expect(await s.importReceipt(canceled)).toBe(0);
+    expect(await stock()).toBe(10);
+  });
+
   test('importReceipt resolves unknown_listing once linked', async () => {
     await sql`update products set etsy_listing_id = null`;
     expect(await s.importReceipt(receipt())).toBe(0);
@@ -119,6 +130,17 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
     const q = new URL(urls[0]).searchParams;
     expect(q.get('was_paid')).toBe('true');
     expect(q.get('min_created')).toBe(String(ts('2026-11-02T12:00:00Z')));
+    const c = new URL(urls[1]).searchParams;
+    expect(c.get('was_canceled')).toBe('true');
+    expect(c.get('min_last_modified')).toBe(String(ts('2026-11-02T12:00:00Z')));
+  });
+
+  test('catchUp removes a sale whose order was canceled later', async () => {
+    await s.importReceipt(receipt());
+    const f = (async (url: string) => list(new URL(url).searchParams.get('was_canceled') ? [{ ...receipt(), status: 'canceled' }] : [receipt()])) as unknown as typeof fetch;
+    await s.catchUp(now, f);
+    expect(await stock()).toBe(10);
+    expect(await sql`select 1 from sales`).toHaveLength(0);
   });
 
   test('runDaily records a failing step and still runs the rest', async () => {

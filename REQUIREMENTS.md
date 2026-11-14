@@ -28,7 +28,7 @@ Etsy order packing stays outside the app: you tell your friend about each order,
 
 ## Functional requirements
 
-There are 24 requirements: 19 Must, 2 Should and 3 Won't for now (FR-07, FR-08 and FR-10, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
+There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 and FR-25, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
 
 | ID | Area | Requirement | Priority | Acceptance check | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -41,7 +41,7 @@ There are 24 requirements: 19 Must, 2 Should and 3 Won't for now (FR-07, FR-08 a
 | FR-07 | Etsy sync | Lower the Etsy listing quantity automatically after a store sale | Won't for now (backlog) | Etsy shows the lower quantity shortly after saving | Locked |
 | FR-08 | Etsy sync | Raise the Etsy quantity when a shipment is recorded, so you enter it once | Won't for now (backlog) | Etsy shows the higher quantity shortly after saving | Locked |
 | FR-09 | Etsy sync | Flag any mismatch between app stock and Etsy quantity | Must | A quantity changed directly on Etsy gets flagged | Locked |
-| FR-10 | Etsy sync | Remove refunded or canceled sales from revenue and profit; return units to stock only after you confirm they are sellable | Won't for now (backlog) | A test refund changes profit, and stock changes only after confirming | Locked |
+| FR-10 | Etsy sync | Remove a canceled Etsy order's sales from revenue and profit, and return its units to stock automatically | Must | A canceled test order disappears from Sales and its units come back to stock | Locked |
 | FR-11 | Costs | Log bulk packaging and gift purchases as expenses on the purchase date | Must | Each expense appears in that month's profit | Locked |
 | FR-12 | Costs | Pull Etsy fees and ads automatically, as accurately as Etsy's data allows | Must | One month's total reconciles to the Etsy statement, with any gap shown | Locked |
 | FR-13 | Costs | Calculate average unit cost per SKU from vendor price and freight, with shared freight split by weight | Must | A sample shipment matches a hand calculation | Locked |
@@ -56,6 +56,7 @@ There are 24 requirements: 19 Must, 2 Should and 3 Won't for now (FR-07, FR-08 a
 | FR-22 | Access | Give both users full access to all screens | Must | Both can reach every screen with the same link | Locked |
 | FR-23 | Reports | Show a line chart of profit, revenue or units sold per day for the selected range (switchable), with the previous period as a dashed line | Must | Hovering a day shows both periods' values, and the daily values add up to the totals | Locked |
 | FR-24 | Reports | Filter the dashboard by this week, this month or a custom date range; every number, chart and table on the page follows the filter | Must | Choosing 1–15 Oct shows only those days, compared with 16–30 Sep | Locked |
+| FR-25 | Etsy sync | Remove refunded sales from revenue and profit; return units to stock only after you confirm they are sellable | Won't for now (backlog) | A test refund changes profit, and stock changes only after confirming | Locked |
 
 ## Business rules
 
@@ -75,7 +76,8 @@ Profit is revenue minus the cost of goods sold, expenses, Etsy fees and ads. The
 | Margin | Profit divided by revenue. |
 | Comparison period | A week runs Monday to today, against the same days last week. A month runs the 1st to today, against the same days last month. A custom range compares with the same number of days just before it. |
 | Exchange rate | One USD–VND rate for the whole year, used for every conversion. |
-| Refunds and cancellations | Backlog, not handled for now. A canceled or refunded Etsy order still counts as a sale; fix stock with a correction (FR-04). |
+| Cancellations | A canceled Etsy order is removed from sales and its units go back to stock automatically, because it never shipped (FR-10). A store or Instagram sale is canceled by deleting it on the Sales page. |
+| Refunds | Backlog (FR-25). A refunded Etsy order still counts as a sale; fix stock with a correction (FR-04). |
 | Low stock | About 3 units left for a SKU. |
 | Expiry alerts | 3, 2 and 1 months before expiry, using the earliest date on hand. |
 | Buyer shipping | The buyer pays shipping at checkout, on top of the product price. Shipping charges and Etsy label costs are left out of revenue, expenses and profit. Freight from Japan stays in unit cost. |
@@ -97,7 +99,7 @@ The app must be easier than Google Sheets, with sales entry designed for phones 
 
 ## Out of scope
 
-These stay out for now and need a change-log entry to come back in. Backlog to revisit: cancellations and refunds (FR-10), and pushing quantities to Etsy (FR-07, FR-08).
+These stay out for now and need a change-log entry to come back in. Backlog to revisit: refunds (FR-25), and pushing quantities to Etsy (FR-07, FR-08).
 
 - Payments to your friend, any store cut, and passing store money to you
 - Storage costs, taxes, samples, and write-offs for damaged or expired products
@@ -139,6 +141,7 @@ Any change to a locked requirement gets a row here, newest first.
 
 | Date | Decision | Made by |
 | --- | --- | --- |
+| 15 Nov 2026 | Cancellations come out of the backlog: a canceled Etsy order returns its units to stock automatically (FR-10). Refunds stay in the backlog as FR-25. Every screen gets a Refresh button for the iPhone home-screen app. | Owner |
 | 6 Nov 2026 | Dashboard gets a daily line chart (FR-23) and a week, month or custom date filter (FR-24); FR-16 now compares any selected range | Owner |
 | 6 Nov 2026 | Pushing quantities to Etsy (FR-07, FR-08) moved to the backlog until the app is proven; the app only reads from Etsy | Owner |
 | 6 Nov 2026 | Cancellations and refunds (FR-10) moved to the backlog, to revisit later | Owner |

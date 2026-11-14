@@ -69,7 +69,9 @@ td input, td select { width: 100%; min-width: 80px; }
 .chart { width: 100%; height: auto; display: block; }
 
 :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-nav a:focus-visible { outline-color: #fff; }
+nav a:focus-visible, nav .refresh:focus-visible { outline-color: #fff; }
+nav .refresh { margin-left: auto; min-height: 48px; padding: 0 12px; background: none; border: 1px solid #fff; border-radius: 8px; color: #fff; font: inherit; cursor: pointer; }
+nav .refresh:disabled { opacity: 0.7; }
 nav a[aria-current=page] { font-weight: 700; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 8px; }
 nav a.cta { background: #fff; color: var(--green); font-weight: 700; border-radius: 8px; }
 nav a.cta[aria-current=page] { background: var(--green-soft); }
