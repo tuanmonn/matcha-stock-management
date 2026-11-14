@@ -11,6 +11,10 @@ const map = { bySku: new Map<string, string>(), byListing: new Map([['5', 'p1']]
 const before = new Date((T0 - 100) * 1000);
 
 describe('receiptToSales', () => {
+  it('skips a canceled receipt', () => {
+    expect(receiptToSales({ ...receipt(), status: 'canceled' }, map, before)).toEqual({ sales: [], issues: [] });
+  });
+
   it('unit price is amount*100/divisor', () => {
     expect(receiptToSales(receipt(), map, before).sales[0].unit_price).toBe(2400);
     const r = receipt([tx({ price: { amount: 24, divisor: 1, currency_code: 'USD' } })]);

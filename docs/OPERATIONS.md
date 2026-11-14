@@ -70,8 +70,8 @@ The user's shell doesn't load Node by default, so start every Node or npm comman
   - Ignored: `PAYMENT_GROSS`, `DISBURSE2`, `sales_tax`, `shipping_labels` and `seller_onboarding_fee_payment`.
 - **Fee to SKU links** are set at import time. After backfilling sales, link existing rows by `reference_type` `transaction` (via `sales.etsy_transaction_id`) or `receipt` (when all of that receipt's sales are one product).
 - **Tokens.** Access tokens last 1 hour, and refresh tokens rotate on every refresh. Refresh only through the app's compare-and-set path (`getAccessToken`) or an equivalent conditional `update … where etsy_refresh_token = <old>`. A careless refresh logs the live site out.
-- **Webhook.** `order.paid` was registered in Etsy's Webhook portal on 10 November 2026 and is verified, with signed test messages giving 200 and unsigned ones 401. Other events aren't needed.
-- **Daily cron.** `/etsy/daily` runs at 12:00 UTC (`vercel.json`): token, catch-up (7 days), ledger import, then mismatch check. **Sync now** in Settings runs the same job.
+- **Webhook.** `order.paid` was registered in Etsy's Webhook portal on 10 November 2026 and is verified, with signed test messages giving 200 and unsigned ones 401. `order.canceled` is handled by the same route and must be registered in the portal too.
+- **Daily cron.** `/etsy/daily` runs at 12:00 UTC (`vercel.json`): token, catch-up (paid and canceled receipts, 7 days), ledger import, then mismatch check. **Sync now** in Settings runs the same job.
 
 ## Money rules confirmed against Etsy (October 2026 statement)
 
@@ -90,7 +90,7 @@ The user's shell doesn't load Node by default, so start every Node or npm comman
 ## Backlog and known gaps
 
 - **Backlog:**
-  - Cancellations and refunds (FR-10); fix stock with a Stock correction for now.
+  - Refunds (FR-25); fix stock with a Stock correction for now.
   - Pushing quantities to Etsy (FR-07/08).
   - Telegram alerts (phase 3).
 - **Known minor gaps:**

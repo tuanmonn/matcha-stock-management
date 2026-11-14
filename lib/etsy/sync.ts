@@ -1,7 +1,7 @@
 import { sql } from '@/lib/db';
-import { clearExpiries } from '@/lib/data';
+import { clearExpiries, deleteSale } from '@/lib/data';
 import { etsyGet, getAccessToken } from '@/lib/etsy/client';
-import { receiptToSales, ledgerToRow, mismatches, type EtsyReceipt, type EtsyLedgerEntry, type EtsyListing, type IssueRow } from '@/lib/etsy/map';
+import { receiptToSales, isCanceled, ledgerToRow, mismatches, type EtsyReceipt, type EtsyLedgerEntry, type EtsyListing, type IssueRow } from '@/lib/etsy/map';
 
 const DAY = 86_400_000;
 const secs = (ms: number) => Math.floor(ms / 1000);
@@ -30,7 +30,15 @@ const soleListings = (products: { id: string; etsy_listing_id: string | null }[]
 const upsertIssue = (i: IssueRow) =>
   sql`insert into sync_issues (kind, ref, detail) values (${i.kind}, ${i.ref}, ${i.detail}) on conflict (kind, ref) do nothing`;
 
+// A canceled order never left the shelf, so its sales are removed and the units go back to stock.
+export async function cancelReceipt(receipt: EtsyReceipt): Promise<number> {
+  const rows = await sql`select id from sales where etsy_receipt_id = ${String(receipt.receipt_id)}`;
+  for (const r of rows) await deleteSale(r.id);
+  return rows.length;
+}
+
 export async function importReceipt(receipt: EtsyReceipt): Promise<number> {
+  if (isCanceled(receipt)) { await cancelReceipt(receipt); return 0; }
   const s = await settings();
   const products = (await sql`select id, sku, etsy_listing_id from products`) as { id: string; sku: string; etsy_listing_id: string | null }[];
   const bySku = new Map<string, string>(products.map((p) => [p.sku, p.id]));
@@ -57,7 +65,11 @@ export async function fetchReceipt(receiptId: string, f: typeof fetch = fetch): 
 export async function catchUp(now: Date, f: typeof fetch = fetch): Promise<number> {
   const s = await settings();
   const from = Math.max(now.getTime() - 7 * DAY, new Date(s.etsy_connected_at!).getTime() - DAY);
-  const receipts = await pages<EtsyReceipt>(`/shops/${s.etsy_shop_id}/receipts`, { was_paid: true, min_created: secs(from) }, f);
+  const receipts = [
+    ...(await pages<EtsyReceipt>(`/shops/${s.etsy_shop_id}/receipts`, { was_paid: true, min_created: secs(from) }, f)),
+    // Backstop for a missed order.canceled webhook; importReceipt removes the sales of a canceled receipt.
+    ...(await pages<EtsyReceipt>(`/shops/${s.etsy_shop_id}/receipts`, { was_canceled: true, min_last_modified: secs(from) }, f)),
+  ];
   let n = 0;
   for (const r of receipts) n += await importReceipt(r);
   return n;

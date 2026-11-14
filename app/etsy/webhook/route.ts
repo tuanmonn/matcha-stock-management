@@ -15,9 +15,10 @@ export async function POST(req: Request) {
     if (s?.etsy_status !== 'connected') return new Response('ok');
     if ((await sql`select 1 from webhook_events where webhook_id = ${id}`).length) return new Response('ok');
     const event = JSON.parse(body) as { event_type?: string; resource_url?: string };
-    if (event.event_type === 'order.paid') {
+    // importReceipt handles both: it records a paid receipt and removes the sales of a canceled one.
+    if (event.event_type === 'order.paid' || event.event_type === 'order.canceled') {
       const receiptId = /\/receipts\/(\d+)/.exec(event.resource_url ?? '')?.[1];
-      if (!receiptId) throw new Error('order.paid without a receipt id');
+      if (!receiptId) throw new Error(`${event.event_type} without a receipt id`);
       await importReceipt(await fetchReceipt(receiptId));
     }
     await sql`insert into webhook_events (webhook_id) values (${id}) on conflict do nothing`;
