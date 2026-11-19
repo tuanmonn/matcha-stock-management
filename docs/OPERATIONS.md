@@ -93,7 +93,7 @@ The user's shell doesn't load Node by default, so start every Node or npm comman
 - **Backlog:**
   - Refunds (FR-25); fix stock with a Stock correction for now.
   - Pushing quantities to Etsy (FR-07/08).
-  - Telegram alerts (phase 3).
+  - Telegram stock and expiry alerts (rest of phase 3, FR-20). Etsy sale messages are done.
 - **Known minor gaps:**
   - Listings are read one page of 100.
   - The callback, webhook and cron routes have no route-level tests.
