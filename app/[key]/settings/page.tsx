@@ -1,9 +1,10 @@
 import { requireKey } from '@/lib/access';
+import { sql } from '@/lib/db';
 import { loadSnapshot } from '@/lib/data';
 import { US_ZONES } from '@/lib/forms';
 import { listActiveListings } from '@/lib/etsy/sync';
 import type { Product } from '@/lib/types';
-import { connectEtsyAction, saveProductAction, setRateAction, setTimeZoneAction, syncNowAction } from '../actions';
+import { connectEtsyAction, linkTelegramAction, saveProductAction, setRateAction, setTimeZoneAction, syncNowAction } from '../actions';
 import { ActionForm } from '../ui';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ key: 
   requireKey(key);
   const s = await loadSnapshot();
   const listings: Listing[] | null = s.etsy.status === 'connected' ? await listActiveListings().catch(() => null) : null;
+  const [{ telegram_chat_id }] = await sql`select telegram_chat_id from settings where id = 1`;
   const years = Object.keys(s.rates).map(Number).sort();
   return (
     <>
@@ -74,6 +76,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ key: 
         <button type="submit" className={s.etsy.status === 'connected' ? undefined : 'primary'}>{s.etsy.status === 'connected' ? 'Reconnect Etsy' : s.etsy.status === 'reconnect' ? 'Reconnect' : 'Connect Etsy'}</button>
       </form>
       {s.etsy.status === 'connected' && <ActionForm action={syncNowAction.bind(null, key)} submit="Sync now"><></></ActionForm>}
+      </section>
+
+      <section className="panel">
+      <h2>Telegram</h2>
+      <p>{telegram_chat_id ? 'Linked' : 'Not linked'}</p>
+      <p className="muted">Create a bot with @BotFather, add its token to the app, send the bot any message, then press the button.</p>
+      <ActionForm action={linkTelegramAction.bind(null, key)} submit="Link Telegram and send test"><></></ActionForm>
       </section>
 
       <section className="panel">

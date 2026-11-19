@@ -1,5 +1,7 @@
 import { sql } from '@/lib/db';
 import { clearExpiries, deleteSale } from '@/lib/data';
+import { formatUsd } from '@/lib/money';
+import { notifySafely } from '@/lib/telegram';
 import { etsyGet, getAccessToken } from '@/lib/etsy/client';
 import { receiptToSales, isCanceled, ledgerToRow, mismatches, type EtsyReceipt, type EtsyLedgerEntry, type EtsyListing, type IssueRow } from '@/lib/etsy/map';
 
@@ -31,14 +33,15 @@ const upsertIssue = (i: IssueRow) =>
   sql`insert into sync_issues (kind, ref, detail) values (${i.kind}, ${i.ref}, ${i.detail}) on conflict (kind, ref) do nothing`;
 
 // A canceled order never left the shelf, so its sales are removed and the units go back to stock.
-export async function cancelReceipt(receipt: EtsyReceipt): Promise<number> {
-  const rows = await sql`select id from sales where etsy_receipt_id = ${String(receipt.receipt_id)}`;
+export async function cancelReceipt(receipt: EtsyReceipt, f: typeof fetch = fetch): Promise<number> {
+  const rows = await sql`select id, qty from sales where etsy_receipt_id = ${String(receipt.receipt_id)}`;
   for (const r of rows) await deleteSale(r.id);
+  if (rows.length) await notifySafely(`↩️ Etsy order ${receipt.receipt_id} canceled. ${rows.reduce((n, r) => n + r.qty, 0)} items returned to stock.`, f);
   return rows.length;
 }
 
-export async function importReceipt(receipt: EtsyReceipt): Promise<number> {
-  if (isCanceled(receipt)) { await cancelReceipt(receipt); return 0; }
+export async function importReceipt(receipt: EtsyReceipt, f: typeof fetch = fetch): Promise<number> {
+  if (isCanceled(receipt)) { await cancelReceipt(receipt, f); return 0; }
   const s = await settings();
   const products = (await sql`select id, sku, etsy_listing_id from products`) as { id: string; sku: string; etsy_listing_id: string | null }[];
   const bySku = new Map<string, string>(products.map((p) => [p.sku, p.id]));
@@ -55,7 +58,25 @@ export async function importReceipt(receipt: EtsyReceipt): Promise<number> {
     sql`update sync_issues set resolved_at = now() where kind = 'unknown_listing' and resolved_at is null and ref = any(${sales.map((x) => x.etsy_transaction_id)}::text[])`,
   ]);
   // Each sale contributes two statements (sale insert, stock move); count the sale inserts that returned a row.
-  return sales.filter((_, i) => res[i * 2].length > 0).length;
+  const added = sales.filter((_, i) => res[i * 2].length > 0);
+  if (added.length) await notifySale(added, f);
+  return added.length;
+}
+
+async function notifySale(added: { product_id: string; qty: number; unit_price: number; discount: number }[], f: typeof fetch) {
+  const ids = [...new Set(added.map((x) => x.product_id))];
+  const rows = (await sql`select p.id, p.name, coalesce(sum(m.qty_delta), 0)::int as stock
+    from products p left join stock_moves m on m.product_id = p.id where p.id = any(${ids}::uuid[]) group by p.id`) as { id: string; name: string; stock: number }[];
+  const by = new Map(rows.map((r) => [r.id, r]));
+  const discount = added.reduce((n, x) => n + x.discount, 0);
+  const total = added.reduce((n, x) => n + x.qty * x.unit_price, 0) - discount;
+  await notifySafely([
+    '🛒 New Etsy sale',
+    ...added.map((x) => `${x.qty} × ${by.get(x.product_id)!.name} at ${formatUsd(x.unit_price)}`),
+    ...(discount ? [`Discount −${formatUsd(discount)}`] : []),
+    `Total ${formatUsd(total)}`,
+    `Stock left: ${rows.map((r) => `${r.name} ${r.stock}`).join(', ')}`,
+  ].join('\n'), f);
 }
 
 export async function fetchReceipt(receiptId: string, f: typeof fetch = fetch): Promise<EtsyReceipt> {
@@ -71,7 +92,7 @@ export async function catchUp(now: Date, f: typeof fetch = fetch): Promise<numbe
     ...(await pages<EtsyReceipt>(`/shops/${s.etsy_shop_id}/receipts`, { was_canceled: true, min_last_modified: secs(from) }, f)),
   ];
   let n = 0;
-  for (const r of receipts) n += await importReceipt(r);
+  for (const r of receipts) n += await importReceipt(r, f);
   return n;
 }
 

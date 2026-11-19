@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { sameDatabase } from './db-guard';
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -46,6 +46,48 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
     expect(await sql`select 1 from sales where channel = 'etsy'`).toHaveLength(1);
     expect(await sql`select 1 from stock_moves where kind = 'sale'`).toHaveLength(1);
     expect(await stock()).toBe(8);
+  });
+
+  describe('telegram', () => {
+    const sent: string[] = [];
+    const tg = (status = 200) => (async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/sendMessage')) sent.push(JSON.parse(String(init?.body)).text);
+      return json(status, { ok: status === 200, result: [{ message: { chat: { id: 42 } } }] });
+    }) as unknown as typeof fetch;
+    beforeEach(async () => { sent.length = 0; process.env.TELEGRAM_BOT_TOKEN = 'test-token'; await sql`update settings set telegram_chat_id = '42' where id = 1`; });
+    afterAll(async () => { delete process.env.TELEGRAM_BOT_TOKEN; await sql`update settings set telegram_chat_id = null where id = 1`; });
+
+    test('a new sale sends one message, a repeat sends none', async () => {
+      await s.importReceipt(receipt(), tg());
+      await s.importReceipt(receipt(), tg());
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toBe('🛒 New Etsy sale\n2 × Matcha 30g at $14.00\nTotal $28.00\nStock left: Matcha 30g 8');
+    });
+
+    test('a canceled order sends one message', async () => {
+      await s.importReceipt(receipt(), tg());
+      await s.importReceipt({ ...receipt(), status: 'Canceled' }, tg());
+      expect(sent[1]).toBe('↩️ Etsy order 900 canceled. 2 items returned to stock.');
+    });
+
+    test('a failing Telegram call does not break the import', async () => {
+      expect(await s.importReceipt(receipt(), tg(500))).toBe(1);
+      expect(await sql`select 1 from sales`).toHaveLength(1);
+    });
+
+    test('no chat id sends nothing', async () => {
+      await sql`update settings set telegram_chat_id = null where id = 1`;
+      await s.importReceipt(receipt(), tg());
+      expect(sent).toHaveLength(0);
+    });
+
+    test('linkTelegram saves the chat id and sends a confirmation', async () => {
+      await sql`update settings set telegram_chat_id = null where id = 1`;
+      const { linkTelegram } = await import('@/lib/telegram');
+      expect(await linkTelegram(tg())).toMatch(/Linked/);
+      expect((await sql`select telegram_chat_id from settings where id = 1`)[0].telegram_chat_id).toBe('42');
+      expect(sent[0]).toContain('Matcha app connected');
+    });
   });
 
   test('a canceled receipt removes its sales, returns stock, and is not imported again', async () => {

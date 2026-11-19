@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { sql } from '@/lib/db';
 import { pkce, authorizeUrl } from '@/lib/etsy/client';
 import { runDaily } from '@/lib/etsy/sync';
+import { linkTelegram } from '@/lib/telegram';
 import { requireKey } from '@/lib/access';
 import { dayKey } from '@/lib/periods';
 import { skuOf, saveSale, saveProduct, setRate, setTimeZone, saveShipment, deleteShipment, saveCorrection, clearExpiry, deleteSale, saveExpense, deleteExpense, saveHistory, deleteHistory, saveTransfer, deleteTransfer } from '@/lib/data';
@@ -152,6 +153,11 @@ export async function connectEtsyAction(key: string): Promise<void> {
 export async function syncNowAction(key: string, _prev: State): Promise<State> {
   requireKey(key);
   return attempt(key, async () => (await runDaily(new Date(), fetch, 'manual')).join('. '));
+}
+
+export async function linkTelegramAction(key: string, _prev: State): Promise<State> {
+  requireKey(key);
+  return attempt(key, () => linkTelegram());
 }
 
 export async function dismissIssueAction(key: string, id: string): Promise<void> {

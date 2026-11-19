@@ -13,9 +13,9 @@ This is how the live app is set up and run, and the lessons learned building it.
 | Store | The friend's store is in Texas, so `settings.time_zone = America/Chicago` |
 | Etsy shop | LemonUmaiMatcha. Read-only app, connected |
 
-`.env.local` (git-ignored) holds `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH`, `TEST_DATABASE_URL`, `APP_KEY`, `VERCEL_OIDC_TOKEN`, `ETSY_API_KEY`, `ETSY_SHARED_SECRET` and `ETSY_WEBHOOK_SECRET`.
+`.env.local` (git-ignored) holds `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH`, `TEST_DATABASE_URL`, `APP_KEY`, `VERCEL_OIDC_TOKEN`, `ETSY_API_KEY`, `ETSY_SHARED_SECRET`, `ETSY_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN`.
 
-Vercel production holds `APP_KEY`, `DATABASE_URL`, `ETSY_API_KEY`, `ETSY_SHARED_SECRET`, `ETSY_REDIRECT_URI` (`https://lemon-umai-inventory.vercel.app/etsy/callback`), `CRON_SECRET` and `ETSY_WEBHOOK_SECRET`. All are stored as secrets. Nobody has `CRON_SECRET` locally.
+Vercel production holds `APP_KEY`, `DATABASE_URL`, `ETSY_API_KEY`, `ETSY_SHARED_SECRET`, `ETSY_REDIRECT_URI` (`https://lemon-umai-inventory.vercel.app/etsy/callback`), `CRON_SECRET`, `ETSY_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN`. All are stored as secrets. Nobody has `CRON_SECRET` locally.
 
 ## Commands
 
@@ -72,6 +72,7 @@ The user's shell doesn't load Node by default, so start every Node or npm comman
 - **Tokens.** Access tokens last 1 hour, and refresh tokens rotate on every refresh. Refresh only through the app's compare-and-set path (`getAccessToken`) or an equivalent conditional `update … where etsy_refresh_token = <old>`. A careless refresh logs the live site out.
 - **Webhook.** `order.paid` was registered in Etsy's Webhook portal on 10 November 2026 and is verified, with signed test messages giving 200 and unsigned ones 401. `order.canceled` is handled by the same route and must be registered in the portal too.
 - **Daily cron.** `/etsy/daily` runs at 06:15 UTC (`vercel.json`; 13:15 Vietnam), just after Texas midnight in both CST and CDT and after Etsy's daily ~05:23 UTC ads charge, so the store day and the ads fee settle before the owner's morning check (Hobby crons may fire anytime within the hour). It does: token, catch-up (paid and canceled receipts, 7 days), ledger import, then mismatch check. **Sync now** in Settings runs the same job. Each run is saved in `sync_runs` and shown on the Activity page. Rows in sales, stock moves, Etsy ledger, expenses, shipments and transfers carry `recorded_at` (NULL = saved before 19 Nov 2026), which feeds that page.
+- **Telegram** (`lib/telegram.ts`). The owner gets a message for each new Etsy sale and each canceled order, sent from `importReceipt` and `cancelReceipt`. It does nothing until `TELEGRAM_BOT_TOKEN` and `settings.telegram_chat_id` both exist, and a Telegram failure never blocks an import. Only newly inserted sales notify, so webhook repeats and the daily catch-up don't resend. To link or re-link, send the bot a message and press **Link Telegram and send test** in Settings.
 
 ## Money rules confirmed against Etsy (October 2026 statement)
 

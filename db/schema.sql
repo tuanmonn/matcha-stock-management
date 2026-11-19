@@ -171,3 +171,5 @@ alter table shipments add column if not exists recorded_at timestamptz;
 alter table shipments alter column recorded_at set default now();
 alter table transfers add column if not exists recorded_at timestamptz;
 alter table transfers alter column recorded_at set default now();
+
+alter table settings add column if not exists telegram_chat_id text;
