@@ -28,7 +28,7 @@ Etsy order packing stays outside the app: you tell your friend about each order,
 
 ## Functional requirements
 
-There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 and FR-25, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
+There are 27 requirements: 20 Must, 4 Should and 3 Won't for now (FR-07, FR-08 and FR-25, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
 
 | ID | Area | Requirement | Priority | Acceptance check | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -57,6 +57,8 @@ There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 a
 | FR-23 | Reports | Show a line chart of profit, revenue or units sold per day for the selected range (switchable), with the previous period as a dashed line | Must | Hovering a day shows both periods' values, and the daily values add up to the totals | Locked |
 | FR-24 | Reports | Filter the dashboard by this week, this month or a custom date range; every number, chart and table on the page follows the filter | Must | Choosing 1–15 Oct shows only those days, compared with 16–30 Sep | Locked |
 | FR-25 | Etsy sync | Remove refunded sales from revenue and profit; return units to stock only after you confirm they are sellable | Won't for now (backlog) | A test refund changes profit, and stock changes only after confirming | Locked |
+| FR-26 | History | Show an Activity page listing every recorded change (Etsy syncs and what they added, sales, Etsy fees and ads, corrections, expenses, shipments, transfers) with the time it was recorded, in the viewer's time zone. The dashboard shows the store date and the last Etsy sync | Should | After a sync or a new sale, the Activity page shows it and the dashboard names the last sync | Locked |
+| FR-27 | Alerts | Send a Telegram message for each new Etsy sale (items, total, stock left) and each canceled Etsy order, once per order | Should | A test message arrives after linking in Settings; a repeated Etsy notice sends nothing | Locked |
 
 ## Business rules
 
@@ -141,6 +143,7 @@ Any change to a locked requirement gets a row here, newest first.
 
 | Date | Decision | Made by |
 | --- | --- | --- |
+| 19 Nov 2026 | Added an Activity page and a store-date and last-sync line on the dashboard (FR-26), because numbers changed during the day with no visible cause. The daily Etsy sync moved to about 13:15 Vietnam time, just after Texas midnight. A full change log of edits and deletes was declined for now. Telegram messages for each Etsy sale and cancellation added (FR-27), because the owner has no Etsy app access. | Owner |
 | 15 Nov 2026 | Cancellations come out of the backlog: a canceled Etsy order returns its units to stock automatically (FR-10). Refunds stay in the backlog as FR-25. Every screen gets a Refresh button for the iPhone home-screen app. | Owner |
 | 6 Nov 2026 | Dashboard gets a daily line chart (FR-23) and a week, month or custom date filter (FR-24); FR-16 now compares any selected range | Owner |
 | 6 Nov 2026 | Pushing quantities to Etsy (FR-07, FR-08) moved to the backlog until the app is proven; the app only reads from Etsy | Owner |
