@@ -151,3 +151,23 @@ alter table sales drop constraint if exists sales_channel_check;
 alter table sales add constraint sales_channel_check check (channel in ('etsy','store','instagram'));
 alter table monthly_history drop constraint if exists monthly_history_channel_check;
 alter table monthly_history add constraint monthly_history_channel_check check (channel in ('etsy','store','instagram'));
+
+create table if not exists sync_runs (
+  id uuid primary key default gen_random_uuid(),
+  at timestamptz not null default now(),
+  source text not null check (source in ('daily','manual')),
+  summary text not null
+);
+
+alter table sales add column if not exists recorded_at timestamptz;
+alter table sales alter column recorded_at set default now();
+alter table stock_moves add column if not exists recorded_at timestamptz;
+alter table stock_moves alter column recorded_at set default now();
+alter table etsy_ledger add column if not exists recorded_at timestamptz;
+alter table etsy_ledger alter column recorded_at set default now();
+alter table expenses add column if not exists recorded_at timestamptz;
+alter table expenses alter column recorded_at set default now();
+alter table shipments add column if not exists recorded_at timestamptz;
+alter table shipments alter column recorded_at set default now();
+alter table transfers add column if not exists recorded_at timestamptz;
+alter table transfers alter column recorded_at set default now();

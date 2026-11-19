@@ -32,7 +32,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
   });
 
   beforeEach(async () => {
-    await sql`truncate sales, stock_moves, shipment_lines, shipments, expiry_dates, etsy_ledger, sync_issues, products cascade`;
+    await sql`truncate sales, stock_moves, shipment_lines, shipments, expiry_dates, etsy_ledger, sync_issues, sync_runs, products cascade`;
     await sql`update settings set etsy_shop_id = '123', etsy_connected_at = ${connected}, etsy_status = 'connected', etsy_access_token = 'at', etsy_refresh_token = 'rt', etsy_expires_at = ${new Date(Date.now() + 3600_000).toISOString()} where id = 1`;
     p = await d.saveProduct({ sku: 'M30', name: 'Matcha 30g', grams: 30, packaging: 'bag', store_price: 1400, details: '', etsy_listing_id: '555', low_stock_at: 3 });
     await d.saveShipment({ paid_by: 'my', freight_paid_by: 'my', received_on: '2026-10-01', freight_amount: 0, freight_currency: 'USD', note: '', lines: [{ product_id: p, units: 10, vendor_amount: 1000, vendor_currency: 'USD', expiry_date: '2027-03-31' }] });
@@ -156,7 +156,9 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('etsy sync', () => {
     expect(await sql`select 1 from etsy_ledger`).toHaveLength(1);
     expect(await sql`select 1 from sync_issues where kind = 'etsy_error' and ref = 'catchUp' and resolved_at is null`).toHaveLength(1);
     const ok = (async (url: string) => (new URL(url).pathname.endsWith('/listings') ? list([{ listing_id: 555, quantity: 0, has_variations: true, title: 'Matcha', inventory: { products: [{ sku: 'M30', offerings: [{ quantity: 10, is_enabled: true }] }] } }]) : list([]))) as unknown as typeof fetch;
-    await s.runDaily(now, ok);
+    await s.runDaily(now, ok, 'manual');
+    expect((await sql`select source from sync_runs order by at, source`).map((r) => r.source).sort()).toEqual(['daily', 'manual']);
+    expect((await sql`select summary from sync_runs where source = 'daily'`)[0].summary).toContain('catchUp: Etsy 500');
     expect(await sql`select 1 from sync_issues where kind = 'etsy_error' and resolved_at is null`).toHaveLength(0);
   });
 

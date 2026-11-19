@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireKey } from '@/lib/access';
 import { loadSnapshot } from '@/lib/data';
+import { lastSync } from '@/lib/activity';
+import LocalTime from './LocalTime';
 import { dismissIssueAction } from './actions';
 import { parseRange } from '@/lib/forms';
 import { formatUsd, formatVnd, usdCentsToVnd } from '@/lib/money';
@@ -75,7 +77,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   requireKey(key);
   const sp = await searchParams;
   const range = parseRange(sp);
-  const s = await loadSnapshot();
+  const [s, sync] = await Promise.all([loadSnapshot(), lastSync()]);
   const d = buildDashboard(s, new Date(), range);
   const base = `/${key}`;
 
@@ -129,6 +131,7 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
   return (
     <>
       <h1>Dashboard</h1>
+      <p className="muted">Store date: {dm(d.today)} ({s.timeZone}){sync && <> · Last Etsy sync <LocalTime iso={sync.at} /> — {sync.summary}</>} · <Link className="link" href={`${base}/activity`}>What changed?</Link></p>
 
       <p><Link className="link" href={`${base}/settle`}>Settle up: who gets what, and what Ngoc sends →</Link></p>
 

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
-const LINKS: [string, string][] = [['', 'Dashboard'], ['/sale', 'Record sale'], ['/stock', 'Stock'], ['/shipments', 'Shipments'], ['/sales', 'Sales'], ['/settle', 'Settle up'], ['/settings', 'Settings']];
+const LINKS: [string, string][] = [['', 'Dashboard'], ['/sale', 'Record sale'], ['/stock', 'Stock'], ['/shipments', 'Shipments'], ['/sales', 'Sales'], ['/settle', 'Settle up'], ['/activity', 'Activity'], ['/settings', 'Settings']];
 
 export default function Nav({ base }: { base: string }) {
   const path = usePathname();

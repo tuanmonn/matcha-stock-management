@@ -151,7 +151,7 @@ export async function connectEtsyAction(key: string): Promise<void> {
 
 export async function syncNowAction(key: string, _prev: State): Promise<State> {
   requireKey(key);
-  return attempt(key, async () => (await runDaily(new Date())).join('. '));
+  return attempt(key, async () => (await runDaily(new Date(), fetch, 'manual')).join('. '));
 }
 
 export async function dismissIssueAction(key: string, id: string): Promise<void> {
