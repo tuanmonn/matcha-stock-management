@@ -71,7 +71,7 @@ The user's shell doesn't load Node by default, so start every Node or npm comman
 - **Fee to SKU links** are set at import time. After backfilling sales, link existing rows by `reference_type` `transaction` (via `sales.etsy_transaction_id`) or `receipt` (when all of that receipt's sales are one product).
 - **Tokens.** Access tokens last 1 hour, and refresh tokens rotate on every refresh. Refresh only through the app's compare-and-set path (`getAccessToken`) or an equivalent conditional `update … where etsy_refresh_token = <old>`. A careless refresh logs the live site out.
 - **Webhook.** `order.paid` was registered in Etsy's Webhook portal on 10 November 2026 and is verified, with signed test messages giving 200 and unsigned ones 401. `order.canceled` is handled by the same route and must be registered in the portal too.
-- **Daily cron.** `/etsy/daily` runs at 12:00 UTC (`vercel.json`): token, catch-up (paid and canceled receipts, 7 days), ledger import, then mismatch check. **Sync now** in Settings runs the same job.
+- **Daily cron.** `/etsy/daily` runs at 06:15 UTC (`vercel.json`; 13:15 Vietnam), just after Texas midnight in both CST and CDT and after Etsy's daily ~05:23 UTC ads charge, so the store day and the ads fee settle before the owner's morning check (Hobby crons may fire anytime within the hour). It does: token, catch-up (paid and canceled receipts, 7 days), ledger import, then mismatch check. **Sync now** in Settings runs the same job. Each run is saved in `sync_runs` and shown on the Activity page. Rows in sales, stock moves, Etsy ledger, expenses, shipments and transfers carry `recorded_at` (NULL = saved before 19 Nov 2026), which feeds that page.
 
 ## Money rules confirmed against Etsy (October 2026 statement)
 

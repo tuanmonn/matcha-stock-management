@@ -133,7 +133,7 @@ export async function checkMismatches(f: typeof fetch = fetch): Promise<number> 
   return found.length;
 }
 
-export async function runDaily(now: Date, f: typeof fetch = fetch): Promise<string[]> {
+export async function runDaily(now: Date, f: typeof fetch = fetch, source: 'daily' | 'manual' = 'daily'): Promise<string[]> {
   if ((await settings()).etsy_status !== 'connected') return ['Etsy not connected'];
   const steps: [string, () => Promise<string>][] = [
     ['token', async () => { await getAccessToken(now, f); return 'ok'; }],
@@ -153,5 +153,6 @@ export async function runDaily(now: Date, f: typeof fetch = fetch): Promise<stri
         on conflict (kind, ref) do update set detail = excluded.detail, resolved_at = null`;
     }
   }
+  await sql`insert into sync_runs (at, source, summary) values (${now.toISOString()}, ${source}, ${lines.join('. ')})`;
   return lines;
 }
