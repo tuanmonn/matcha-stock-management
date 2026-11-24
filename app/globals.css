@@ -105,9 +105,6 @@ td:first-child:has(+ td.n) { overflow-wrap: normal; }
 .hero p { margin: 8px 0 0; }
 .kpi h3 { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8125rem; }
 .spark { display: block; width: 100%; height: 28px; margin-top: 8px; }
-.flow .fl { display: grid; grid-template-columns: 1fr auto auto; gap: 0 16px; padding: 6px 0; font-variant-numeric: tabular-nums; }
-.flow .fl .bar { grid-column: 1 / -1; height: 6px; margin: 4px 0 0; }
-.flow .fl.total { font-weight: 700; }
 .bar.cost > span { background: var(--grey); }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 4px 0 12px; vertical-align: -1px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

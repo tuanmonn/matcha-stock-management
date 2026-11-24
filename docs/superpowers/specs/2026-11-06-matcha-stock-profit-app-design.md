@@ -68,8 +68,8 @@ Replaying keeps old reports correct when a shipment is edited or a rate changes,
 **Revenue.** Store sales count the entered price × quantity. Etsy sales count the item price × quantity, minus any discount. Buyer shipping and sales tax are excluded (business rule: buyer shipping).
 
 **Profit (FR-14).**
-- **Shop profit:** revenue − cost of goods sold − packaging and gift expenses − Etsy fees − Etsy ads. Margin is profit ÷ revenue.
-- **SKU profit (FR-15):** revenue − cost of goods sold − Etsy fees linked to that SKU's orders. Fees Etsy doesn't link to an order count at shop level only, like ads and packaging, and are not split across SKUs.
+- **Shop profit (take-home):** revenue − shipments received in the period (vendor cost plus freight, dated by the day received) − packaging and gift expenses − Etsy fees − Etsy ads. It counts all money spent, not the cost of units sold, so stock bought but unsold lowers it. Margin is profit ÷ revenue. Past monthly totals (FR-18) use their cost of goods as that month's stock spend.
+- **SKU and channel profit (FR-15), unchanged:** revenue − cost of goods sold − Etsy fees linked to that SKU's orders. Fees Etsy doesn't link to an order count at shop level only, like ads and packaging, and are not split across SKUs.
 
 ## 6. Flows
 
@@ -116,7 +116,7 @@ Mismatches are only caught here. Etsy's `inventory.updated` event doesn't fire o
 - **Date filter (FR-24):** one row above everything: This week, This month (the default) or a custom range. Every figure, chart and table on the page follows it.
 - **Comparison (FR-16):** a week runs Monday to today, against the same days last week. A month runs the 1st to today, against the same days last month; a month with fewer days stops at its last day, so 1–31 March compares with 1–28 February. A custom range compares with the same number of days just before it.
 - **Dashboard order:** profit first, then margin, revenue, units sold and orders, then the chart.
-- **Chart (FR-23):** one value per day, switchable between profit, revenue and units sold, so it only ever has one axis. The selected range is a solid blue line and the previous period a dashed gray line, both labeled. Hovering or focusing a day shows both values, and a "Show as table" switch lists the same numbers. It's plain SVG, with no chart library.
+- **Chart (FR-23):** one line of cumulative shop take-home from the first activity day to today, always for the whole life of the shop whatever range is selected (monthly points if it spans over 400 days). A dot marks each day a shipment arrived, and a dashed line marks break-even. Hovering or focusing a point shows the date, the running total and that day's change, and a "Show as table" switch lists the same numbers. It's plain SVG, with no chart library. "Where the money went" is a table of money in and out, this period against the last.
 - **Splits:** by Etsy vs store, and by SKU.
 - **Days and months:** set by the time zone in settings, which is the store's US time zone (decision Q5).
 - **Currency:** every amount converts to USD and VND using its own year's rate from `fx_rates`. If a year has no rate, the report says so and doesn't guess.

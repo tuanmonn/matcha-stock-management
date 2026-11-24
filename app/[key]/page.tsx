@@ -118,14 +118,15 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
     </div>
   );
   const stockOfId = new Map(d.stock.map(x => [x.productId, x.stock]));
-  const empty = { revenue: 0, cogs: 0, expenses: 0, fees: 0, ads: 0, profit: 0, margin: null, units: 0, orders: 0 } as Totals;
+  const empty = { revenue: 0, cogs: 0, stock: 0, packaging: 0, gifts: 0, fees: 0, ads: 0, profit: 0, margin: null, units: 0, orders: 0 } as Totals;
   const ids = new Set([...s.products.filter(p => p.active).map(p => p.id), ...Object.keys(d.current.bySku)]);
   const products = [...ids].map(id => [id, name.get(id) ?? id, d.current.bySku[id] ?? empty] as const).sort((a, b) => b[2].profit - a[2].profit);
   const shared = d.current.byChannel.etsy.profit + d.current.byChannel.store.profit + d.current.byChannel.instagram.profit - cur.profit;
   const sharedSku = Object.values(d.current.bySku).reduce((n, t) => n + t.profit, 0) - cur.profit;
-  const sharedNote = (v: number, by: string) => v > 0 && <p className="muted">Shop costs not split by {by} (expenses, ads, other Etsy fees): {formatUsd(v)}. {by === 'channel' ? 'Etsy + Store + Instagram' : 'Products'} − this = total profit.</p>;
-  const flow: [string, number, boolean][] = [['Sales', cur.revenue, false], ['Product cost', cur.cogs, true], ['Etsy fees', cur.fees, true], ['Ads', cur.ads, true], ['Expenses', cur.expenses, true], ['Take-home', cur.profit, false]];
-  const rows = flow.filter(([l, v]) => v !== 0 || l === 'Sales' || l === 'Take-home');
+  const sharedNote = (v: number, by: string) => v !== 0 && <p className="muted">{by === 'channel' ? 'Etsy + Store + Instagram' : 'Products'} minus take-home: {formatUsd(v)}. That gap is shop costs and matcha shipments, less the cost of the matcha already sold.</p>;
+  const flow: [string, (t: Totals) => number][] = [['Matcha shipments', t => t.stock], ['Packaging', t => t.packaging], ['Gifts', t => t.gifts], ['Etsy fees', t => t.fees], ['Ads', t => t.ads]];
+  const rows = flow.filter(([, f]) => f(cur) !== 0 || (prev && f(prev) !== 0));
+  const money = (v: number, cost = false) => `${cost && v !== 0 ? '−' : ''}${formatUsd(v)}`;
   const seg = (k: Range['kind'], text: string, href: string) => <Link className={`link${range.kind === k ? ' on' : ''}`} aria-current={range.kind === k ? 'page' : undefined} href={href}>{text}</Link>;
 
   return (
@@ -172,20 +173,20 @@ export default async function Dashboard({ params, searchParams }: { params: Prom
       <Todo warnings={d.warnings} name={name} s={s} uncategorizedCents={d.uncategorizedFeesCents} keyValue={key} />
 
       <h2>Where the money went</h2>
-      {cur.revenue === 0 ? <p className="muted">No sales in this period.</p> : (
-        <div className="card flow">{rows.map(([l, v, cost]) => {
-          const share = (v / cur.revenue) * 100;
-          return (
-            <div key={l} className={l === 'Take-home' ? 'fl total' : 'fl'}>
-              <span>{l}</span><span className="n">{cost ? '−' : ''}{formatUsd(v)}</span><span className="n">{Math.round(share)}% of sales</span>
-              <div className={`bar${cost ? ' cost' : ''}`}><span style={{ width: `${Math.max(0, Math.min(100, share))}%` }} /></div>
-            </div>
-          );
-        })}</div>
+      {cur.revenue === 0 && rows.length === 0 && !(prev && prev.revenue !== 0) ? <p className="muted">No sales in this period.</p> : (
+        <div className="tablewrap"><table>
+          <thead><tr><th></th><th className="n">This period</th>{prev && <th className="n">{vs}</th>}</tr></thead>
+          <tbody>
+            <tr><td>Sales (money in)</td><td className="n">{money(cur.revenue)}</td>{prev && <td className="n">{money(prev.revenue)}</td>}</tr>
+            {rows.map(([l, f]) => <tr key={l}><td>{l}</td><td className="n">{money(f(cur), true)}</td>{prev && <td className="n">{money(f(prev), true)}</td>}</tr>)}
+            <tr><th>Take-home</th><th className="n">{money(cur.profit)}</th>{prev && <th className="n">{money(prev.profit)}</th>}</tr>
+          </tbody>
+        </table></div>
       )}
+      {d.stockValueCents > 0 && <p className="muted">Still in stock: {formatUsd(d.stockValueCents)} of matcha, bought but not sold yet.</p>}
 
-      <h2>Trend by {d.series.bucket}</h2>
-      <Chart current={d.series.current} previous={d.series.previous} bucket={d.series.bucket} />
+      <h2>Running total since you started</h2>
+      <Chart points={d.running.points} bucket={d.running.bucket} />
 
       <h2>By product</h2>
       <div className="tablewrap"><table>

@@ -25,7 +25,7 @@ const hist = (m: string, units: number, revenue: number, orders: number): Histor
 const bigSale = mkSale('s-big', 8, '2026-11-06T15:00:00Z');
 
 test('needs time zone', () => expect(buildDashboard({ ...snap, timeZone: null }, now, month)).toEqual({ status: 'needs_time_zone' }));
-test('current month figures', () => expect((buildDashboard(snap, now, month) as any).current.shop).toMatchObject({ revenue: 10000, cogs: 2400, profit: 7600, units: 2 }));
+test('current month figures', () => expect((buildDashboard(snap, now, month) as any).current.shop).toMatchObject({ revenue: 10000, cogs: 2400, stock: 0, profit: 10000, units: 2 }));
 test('same days last month', () => expect((buildDashboard(snap, now, month) as any).previous).toMatchObject({ approximate: false, shop: { revenue: 10000 } }));
 test('VND without a rate names the year', () => expect(buildDashboard({ ...snap, expenses: [{ ...exp, currency: 'VND' }], rates: {} }, now, month)).toMatchObject({ status: 'missing_rate', year: 2026 }));
 test('a missing rate still carries stock and warnings', () => {
@@ -35,7 +35,7 @@ test('a missing rate still carries stock and warnings', () => {
   expect(d.warnings).toContainEqual({ productId: 'p1', kind: 'expiry', level: 'expired', expiryDate: '2026-11-01' });
   expect(d.stock[0]).toMatchObject({ productId: 'p1', stock: 6 });
 });
-test('expense lowers profit', () => expect((buildDashboard({ ...snap, expenses: [exp] }, now, month) as any).current.shop).toMatchObject({ expenses: 1000, profit: 6600 }));
+test('expense lowers profit', () => expect((buildDashboard({ ...snap, expenses: [exp] }, now, month) as any).current.shop).toMatchObject({ gifts: 1000, profit: 9000 }));
 test('history replaces last month and is marked approximate', () => expect((buildDashboard({ ...snap, history: [hist('2026-10-01', 4, 20000, 3)] }, now, month) as any).previous).toMatchObject({ approximate: true, shop: { revenue: 20000, orders: 3 } }));
 test('stock and warnings', () => {
   // The plan's snapshot carries only the sale; stock is the sum of moves, so its move goes in too.
@@ -62,7 +62,7 @@ test('discount lowers revenue', () => {
 });
 test('fee and ads ledger rows count as costs and a refund lowers them', () => {
   const d = shop([led('a', 'fee', -300), led('b', 'ads', -200), led('c', 'fee', 100)]);
-  expect(d.current.shop).toMatchObject({ fees: 200, ads: 200, profit: 7600 - 400 });
+  expect(d.current.shop).toMatchObject({ fees: 200, ads: 200, profit: 10000 - 400 });
 });
 test("fee with product counts in that SKU's profit, ads don't", () => {
   const d = shop([led('a', 'fee', -300, 'p1'), led('b', 'ads', -200, 'p1')]);
@@ -71,22 +71,21 @@ test("fee with product counts in that SKU's profit, ads don't", () => {
 test('uncategorized ledger total is reported and not counted in profit', () => {
   const d = shop([led('a', 'uncategorized', -450), led('b', 'ignore', -999)]);
   expect(d.uncategorizedFeesCents).toBe(450);
-  expect(d.current.shop.profit).toBe(7600);
+  expect(d.current.shop.profit).toBe(10000);
 });
 
 const all = { kind: 'all' as const };
 test('lifetime starts at an early ledger fee, before the first sale', () => {
   const d = buildDashboard({ ...snap, ledger: [{ ...led('early', 'fee', -300), at: '2026-09-24T15:00:00Z' }] }, now, all) as any;
-  expect(d.lifetime).toMatchObject({ since: '2026-09-24', shop: { revenue: 20000, fees: 300, profit: 20000 - 4800 - 300 } });
+  expect(d.lifetime).toMatchObject({ since: '2026-09-24', shop: { revenue: 20000, fees: 300, profit: 20000 - 12000 - 300 } });
   expect(d.windows).toEqual({ current: { from: '2026-09-24', to: '2026-11-10' }, previous: null });
   expect(d.previous).toBeNull();
-  expect(d.series.previous).toEqual([]);
 });
 test('lifetime includes history months and expenses, and is approximate', () => {
   const d = buildDashboard({ ...snap, history: [hist('2026-08-01', 4, 20000, 3)], expenses: [exp] }, now, month) as any;
-  expect(d.lifetime).toMatchObject({ since: '2026-08-01', approximate: true, shop: { revenue: 20000 + 10000 + 10000, expenses: 1000, orders: 3 + 1 + 1 } });
+  expect(d.lifetime).toMatchObject({ since: '2026-08-01', approximate: true, shop: { revenue: 20000 + 10000 + 10000, gifts: 1000, orders: 3 + 1 + 1 } });
 });
-test('no activity gives no lifetime', () => expect((buildDashboard({ ...snap, sales: [], moves: [] }, now, all) as any).lifetime).toBeNull());
+test('no activity gives no lifetime', () => expect((buildDashboard({ ...snap, sales: [], moves: [], shipments: [], lines: [] }, now, all) as any).lifetime).toBeNull());
 test('all time buckets by month, history month included', () => {
   const d = buildDashboard({ ...snap, history: [hist('2026-09-01', 4, 20000, 3)] }, now, all) as any;
   expect(d.series.bucket).toBe('month');
@@ -96,3 +95,17 @@ test('month and week stay daily, long custom ranges go monthly', () => {
   expect((buildDashboard(snap, now, month) as any).series.bucket).toBe('day');
   expect((buildDashboard(snap, now, { kind: 'custom', from: '2026-08-01', to: '2026-11-10' }) as any).series.bucket).toBe('month');
 });
+
+test('shipment in the window counts in full in take-home; sku profit does not', () => {
+  const d = buildDashboard({ ...snap, sales: [], moves: [snap.moves[0]], shipments: [{ ...snap.shipments[0], received_on: '2026-11-03' }] }, now, month) as any;
+  expect(d.current.shop).toMatchObject({ stock: 12000, profit: -12000 });
+  expect(d.current.byChannel.store.profit).toBe(0);
+});
+test('running total is lifetime, cumulative, with the shipment day marked', () => {
+  const d = buildDashboard(snap, now, month) as any;
+  expect(d.running.bucket).toBe('day');
+  expect(d.running.points[0]).toEqual({ day: '2026-10-01', total: -12000, change: -12000, shipment: true });
+  expect(d.running.points.at(-1)).toMatchObject({ day: '2026-11-10', total: 8000, shipment: false });
+  expect(d.running.points.filter((p: any) => p.shipment)).toHaveLength(1);
+});
+test('stock on hand is valued at average cost', () => expect((buildDashboard(snap, now, month) as any).stockValueCents).toBe(6 * 1200));
