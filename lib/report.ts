@@ -3,7 +3,7 @@ import { MissingRateError, toUsdCents } from './money';
 import { allocateFreight } from './freight';
 import { replayCost, type CostEvent } from './cost';
 import { dayKey, daysIn, inWindow, rangeWindows, type Range, type Window } from './periods';
-import { dailySeries, historyLines, monthlySeries, summarize, type CostLine, type DayPoint, type SaleLine } from './profit';
+import { dailySeries, historyLines, monthlySeries, runningTotal, summarize, type CostLine, type DayPoint, type RunPoint, type SaleLine } from './profit';
 import { warnings, type Warning } from './alerts';
 
 type Summary = ReturnType<typeof summarize> & { approximate: boolean };
@@ -14,8 +14,9 @@ export type Dashboard =
   | {
     status: 'ok'; today: string; windows: { current: Window; previous: Window | null };
     current: Summary; previous: Summary | null; lifetime: (Summary & { since: string }) | null;
-    series: { current: DayPoint[]; previous: DayPoint[]; bucket: 'day' | 'month' };
-    stock: (StockInfo & { avgCostCents: number })[];
+    series: { current: DayPoint[]; bucket: 'day' | 'month' };
+    running: { points: RunPoint[]; bucket: 'day' | 'month' };
+    stock: (StockInfo & { avgCostCents: number })[]; stockValueCents: number;
     warnings: Warning[]; uncategorizedFeesCents: number;
   };
 
@@ -39,7 +40,7 @@ export function buildDashboard(s: Snapshot, now: Date, range: Range): Dashboard 
 
 // Earliest day of any sale, ledger entry, expense or history month, in the store's time zone.
 function firstActivity(s: Snapshot, tz: string): string | null {
-  const days = [...s.sales.map(x => dayKey(x.sold_at, tz)), ...s.ledger.map(l => dayKey(l.at, tz)), ...s.expenses.map(x => x.spent_on), ...s.history.map(h => `${h.month.slice(0, 7)}-01`)];
+  const days = [...s.sales.map(x => dayKey(x.sold_at, tz)), ...s.ledger.map(l => dayKey(l.at, tz)), ...s.expenses.map(x => x.spent_on), ...s.shipments.map(x => x.received_on), ...s.history.map(h => `${h.month.slice(0, 7)}-01`)];
   return days.sort()[0] ?? null;
 }
 
@@ -101,10 +102,13 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
     });
   }
 
-  // 4. Expenses.
+  // 4. Expenses by category, and shipment spend (vendor cost plus freight) on the day it was received.
   const costs: CostLine[] = s.expenses.filter(x => inEither(x.spent_on)).map(x => ({
-    day: x.spent_on, amount: toUsdCents(x.amount, x.currency, yearOf(x.spent_on), s.rates), kind: 'expense' as const,
+    day: x.spent_on, amount: toUsdCents(x.amount, x.currency, yearOf(x.spent_on), s.rates), kind: x.category,
   }));
+  for (const sh of s.shipments) {
+    if (inEither(sh.received_on)) costs.push({ day: sh.received_on, kind: 'stock', amount: s.lines.filter(l => l.shipment_id === sh.id).reduce((n, l) => n + landed.get(l.id)!, 0) });
+  }
 
   // Fees and ads in either window; a refund is a positive amount, so it lowers costs. Uncategorized is only reported.
   const ledgerUsd = (l: Snapshot['ledger'][number], day: string) => -toUsdCents(l.amount, l.currency, yearOf(day), s.rates);
@@ -127,17 +131,24 @@ function build(s: Snapshot, tz: string, today: string, windows: { current: Windo
   };
 
   const sw = stockAndWarnings(s, today);
-  const { previous } = windows;
   // History rows sit on their month's first day (or the window start), so monthly bars can place them.
   const histMonthly = (w: Window) => historyLines(s.history.filter(h => w.from.slice(0, 7) <= h.month.slice(0, 7) && h.month.slice(0, 7) <= w.to.slice(0, 7)), avg, s.rates).map(l => ({ ...l, day: l.day < w.from ? w.from : l.day }));
-  const series = (w: Window | null): DayPoint[] => !w ? [] : bucket === 'day' ? dailySeries(saleLines, costs, w) : monthlySeries([...saleLines, ...histMonthly(w)], costs, w);
+  const series = (w: Window): DayPoint[] => bucket === 'day' ? dailySeries(saleLines, costs, w) : monthlySeries([...saleLines, ...histMonthly(w)], costs, w);
+
+  // Running total is always lifetime: daily points, or monthly when that gets long.
+  const runBucket = life && daysIn(life).length > 400 ? 'month' : 'day';
+  const lifeSales = life ? [...saleLines, ...histMonthly(life)] : [];
+  const lifeSeries = !life ? [] : runBucket === 'day' ? dailySeries(lifeSales, costs, life) : monthlySeries(lifeSales, costs, life);
+  const running = runningTotal(lifeSeries, s.shipments.map(x => x.received_on), runBucket === 'month');
+  const stockValueCents = sw.stock.reduce((n, x) => n + Math.max(0, x.stock) * avg[x.productId], 0);
 
   return {
     status: 'ok', today, windows,
-    current: side(windows.current), previous: previous && side(previous),
+    current: side(windows.current), previous: windows.previous && side(windows.previous),
     lifetime: life && { ...side(life), since: life.from },
-    series: { current: series(windows.current), previous: bucket === 'day' ? series(previous) : [], bucket },
-    stock: sw.stock.map(x => ({ ...x, avgCostCents: avg[x.productId] })),
+    series: { current: series(windows.current), bucket },
+    running: { points: running, bucket: runBucket },
+    stock: sw.stock.map(x => ({ ...x, avgCostCents: avg[x.productId] })), stockValueCents,
     warnings: sw.warnings, uncategorizedFeesCents,
   };
 }

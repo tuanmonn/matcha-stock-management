@@ -1,6 +1,6 @@
 # Matcha stock and profit app
 
-This app tracks stock and profit for the user's Etsy matcha shop (Marukyu Koyamaen, 5 SKUs) and a friend's store in Texas. The friend records store sales on a phone; the user checks the dashboard daily. It is live on Vercel with Neon Postgres and a read-only Etsy sync. Phases 1 and 2 are done; Telegram alerts (phase 3) and the backlog remain.
+This app tracks stock and profit for the user's Etsy matcha shop (Marukyu Koyamaen, 5 SKUs) and a friend's store in Texas. The friend records store sales on a phone; the user checks the dashboard daily. It is live on Vercel with Neon Postgres and a read-only Etsy sync. Phases 1 and 2 are done, plus an Activity page and Telegram messages for each Etsy sale. Telegram stock and expiry alerts (the rest of phase 3) and the backlog remain.
 
 ## Model and effort
 

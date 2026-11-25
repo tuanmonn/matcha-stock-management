@@ -28,7 +28,7 @@ Etsy order packing stays outside the app: you tell your friend about each order,
 
 ## Functional requirements
 
-There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 and FR-25, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
+There are 27 requirements: 20 Must, 4 Should and 3 Won't for now (FR-07, FR-08 and FR-25, in the backlog), prioritized with MoSCoW. Update the Status column as work moves from Locked to Verified. You approved FR-04 and FR-06's 15-second target on 5 November 2026.
 
 | ID | Area | Requirement | Priority | Acceptance check | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -45,7 +45,7 @@ There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 a
 | FR-11 | Costs | Log bulk packaging and gift purchases as expenses on the purchase date | Must | Each expense appears in that month's profit | Locked |
 | FR-12 | Costs | Pull Etsy fees and ads automatically, as accurately as Etsy's data allows | Must | One month's total reconciles to the Etsy statement, with any gap shown | Locked |
 | FR-13 | Costs | Calculate average unit cost per SKU from vendor price and freight, with shared freight split by weight | Must | A sample shipment matches a hand calculation | Locked |
-| FR-14 | Reports | Show profit first, then margin, revenue, units sold and orders | Must | One month's numbers match a hand check | Locked |
+| FR-14 | Reports | Show profit first, then margin, revenue, units sold and orders; shop profit is revenue minus all money spent (shipments received, packaging, gifts, Etsy fees, ads), while SKU and channel profit stay revenue minus cost of units sold | Must | One month's numbers match a hand check, and a shipment received counts in full even if nothing sold | Locked |
 | FR-15 | Reports | Split results by Etsy vs store, and by SKU | Must | Etsy and store add up to the total; SKU results show profit before shared costs | Locked |
 | FR-16 | Reports | Compare the selected date range with the period just before it, of the same length (month to date compares with the same days last month) | Must | On 10 November it compares 1–10 November with 1–10 October | Locked |
 | FR-17 | Reports | Show all reports in USD and VND at one exchange rate you set for the year | Must | Changing the rate updates VND and USD conversions consistently | Locked |
@@ -54,9 +54,11 @@ There are 25 requirements: 20 Must, 2 Should and 3 Won't for now (FR-07, FR-08 a
 | FR-20 | Alerts | Send the same warnings through Telegram, once per threshold | Should | Test alerts arrive in Telegram with no duplicates | Locked |
 | FR-21 | Alerts | With mixed expiry dates, base alerts on the earliest date on hand, which clears when you remove that date or the SKU reaches zero | Must | Removing a date moves alerts to the next date | Locked |
 | FR-22 | Access | Give both users full access to all screens | Must | Both can reach every screen with the same link | Locked |
-| FR-23 | Reports | Show a line chart of profit, revenue or units sold per day for the selected range (switchable), with the previous period as a dashed line | Must | Hovering a day shows both periods' values, and the daily values add up to the totals | Locked |
+| FR-23 | Reports | Show a running-total line chart of shop take-home since the first activity day, with shipment arrival days marked and a break-even line | Must | The last point equals the lifetime take-home, and hovering a point shows its date, total and change | Locked |
 | FR-24 | Reports | Filter the dashboard by this week, this month or a custom date range; every number, chart and table on the page follows the filter | Must | Choosing 1–15 Oct shows only those days, compared with 16–30 Sep | Locked |
 | FR-25 | Etsy sync | Remove refunded sales from revenue and profit; return units to stock only after you confirm they are sellable | Won't for now (backlog) | A test refund changes profit, and stock changes only after confirming | Locked |
+| FR-26 | History | Show an Activity page listing every recorded change (Etsy syncs and what they added, sales, Etsy fees and ads, corrections, expenses, shipments, transfers) with the time it was recorded, in the viewer's time zone. The dashboard shows the store date and the last Etsy sync | Should | After a sync or a new sale, the Activity page shows it and the dashboard names the last sync | Locked |
+| FR-27 | Alerts | Send a Telegram message for each new Etsy sale (items, total, stock left) and each canceled Etsy order, once per order | Should | A test message arrives after linking in Settings; a repeated Etsy notice sends nothing | Locked |
 
 ## Business rules
 
@@ -141,6 +143,8 @@ Any change to a locked requirement gets a row here, newest first.
 
 | Date | Decision | Made by |
 | --- | --- | --- |
+| 24 Nov 2026 | Shop profit now subtracts all money spent (shipments received in full) instead of the cost of units sold, so stock bought but unsold lowers take-home (FR-14). "Where the money went" became a table, and the trend chart became a running total since the start with shipment days marked (FR-23). SKU and channel profit are unchanged. | Owner |
+| 19 Nov 2026 | Added an Activity page and a store-date and last-sync line on the dashboard (FR-26), because numbers changed during the day with no visible cause. The daily Etsy sync moved to about 13:15 Vietnam time, just after Texas midnight. A full change log of edits and deletes was declined for now. Telegram messages for each Etsy sale and cancellation added (FR-27), because the owner has no Etsy app access. | Owner |
 | 15 Nov 2026 | Cancellations come out of the backlog: a canceled Etsy order returns its units to stock automatically (FR-10). Refunds stay in the backlog as FR-25. Every screen gets a Refresh button for the iPhone home-screen app. | Owner |
 | 6 Nov 2026 | Dashboard gets a daily line chart (FR-23) and a week, month or custom date filter (FR-24); FR-16 now compares any selected range | Owner |
 | 6 Nov 2026 | Pushing quantities to Etsy (FR-07, FR-08) moved to the backlog until the app is proven; the app only reads from Etsy | Owner |
